@@ -1,6 +1,5 @@
 import { getCurrentUser } from "@/lib/dal";
-import { logout } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
+import { DashboardHeader } from "@/components/dashboard-header";
 import {
   Card,
   CardContent,
@@ -16,12 +15,9 @@ import {
   Video,
   Clock,
   Calendar,
-  LogOut,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -88,42 +84,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-lg tracking-tight">AFM Tracker</span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                Phase 1 MVP
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            <ThemeToggle />
-
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold">{user?.name || "User"}</p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
-            </div>
-
-            <form action={logout}>
-              <Button
-                variant="outline"
-                size="sm"
-                type="submit"
-                className="text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 border-slate-200 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/30"
-              >
-                <LogOut className="w-4 h-4 mr-1.5" />
-                Keluar
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader user={user} />
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
