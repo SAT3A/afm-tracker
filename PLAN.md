@@ -574,8 +574,8 @@ afm_apps/
 - [x] CRUD Products (form + list + modal detail)
 - [x] CRUD Platforms (form + list + modal detail)
 - [x] CRUD Personas (form + list + modal detail)
-- [ ] CRUD Distributions — single input
-- [ ] Batch Distribution input (multi-produk × multi-grup)
+- [x] CRUD Distributions — single input
+- [x] Batch Distribution input (multi-produk × multi-grup)
 - [ ] Dashboard Summary (basic cards + charts)
 - [ ] Filter & Search (basic)
 
