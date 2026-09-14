@@ -576,8 +576,8 @@ afm_apps/
 - [x] CRUD Personas (form + list + modal detail)
 - [x] CRUD Distributions — single input
 - [x] Batch Distribution input (multi-produk × multi-grup)
-- [ ] Dashboard Summary (basic cards + charts)
-- [ ] Filter & Search (basic)
+- [x] Dashboard Summary (basic cards + charts)
+- [x] Filter & Search (basic)
 
 ### Phase 2 — Content & Engagement
 
