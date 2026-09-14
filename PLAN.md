@@ -572,7 +572,7 @@ afm_apps/
 - [x] Project setup (Next.js + Prisma + Supabase + shadcn/ui)
 - [x] Auth (login/register)
 - [x] CRUD Products (form + list + modal detail)
-- [ ] CRUD Platforms (form + list + modal detail)
+- [x] CRUD Platforms (form + list + modal detail)
 - [ ] CRUD Personas (form + list + modal detail)
 - [ ] CRUD Distributions — single input
 - [ ] Batch Distribution input (multi-produk × multi-grup)
