@@ -1,0 +1,97 @@
+name: CI Pipeline
+
+# ==============================================================================
+# TRIGGER WORKFLOW
+# Workflow ini akan berjalan otomatis setiap kali ada:
+# 1. 'push' ke branch 'main' atau 'dev'
+# 2. 'pull_request' ke branch 'main' atau 'dev'
+# ==============================================================================
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+# ==============================================================================
+# JOBS DEFINITION
+# ==============================================================================
+jobs:
+  build-and-verify:
+    name: Build, Lint & Typecheck
+    runs-on: ubuntu-latest # Menggunakan server virtual Ubuntu versi terbaru dari GitHub
+
+    # Dummy environment variables agar proses build Next.js dan Prisma tidak gagal
+    # saat memvalidasi variabel environment di server CI GitHub.
+    env:
+      DATABASE_URL: "postgresql://postgres:dummy@localhost:5432/dummy"
+      DIRECT_URL: "postgresql://postgres:dummy@localhost:5432/dummy"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "ci-dummy-secret-key-for-building-only-123456"
+
+    steps:
+      # ------------------------------------------------------------------------
+      # LANGKAH 1: Ambil Source Code dari Repository GitHub
+      # ------------------------------------------------------------------------
+      - name: 📥 1. Checkout Source Code
+        uses: actions/checkout@v4
+        # Mengunduh salinan repository ke dalam runner virtual machine.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 2: Setup Runtime Node.js
+      # ------------------------------------------------------------------------
+      - name: 🟢 2. Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Menggunakan Node.js versi 20 LTS
+          cache: "npm" # Mengaktifkan caching dependensi npm agar run berikutnya lebih cepat
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 3: Install Dependensi Project
+      # ------------------------------------------------------------------------
+      - name: 📦 3. Install Dependencies
+        run: npm ci
+        # 'npm ci' (Clean Install) membaca package-lock.json secara ketat,
+        # memastikan dependensi di server CI identik 100% dengan di lokal komputer.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 4: Validasi Skema Database Prisma
+      # ------------------------------------------------------------------------
+      - name: 🔍 4. Validate Prisma Schema
+        run: npx prisma validate
+        # Memeriksa sintaks file prisma/schema.prisma untuk memastikan tidak ada relasi
+        # atau tipe data tabel database yang salah/rusak.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 5: Generate Prisma Client Types
+      # ------------------------------------------------------------------------
+      - name: ⚡ 5. Generate Prisma Client
+        run: npx prisma generate
+        # Menghasilkan TypeScript types dari schema database agar file TypeScript
+        # yang mengimpor @prisma/client mengenali struktur tabel.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 6: Pengecekan Type Safety TypeScript
+      # ------------------------------------------------------------------------
+      - name: 🛡️ 6. TypeScript Typecheck
+        run: npx tsc --noEmit
+        # Memeriksa seluruh file kode TypeScript (.ts dan .tsx) untuk memastikan
+        # tidak ada error tipe data tanpa menghasilkan output file javascript.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 7: Pengecekan Kualitas Kode dengan ESLint
+      # ------------------------------------------------------------------------
+      - name: 🧹 7. Run ESLint
+        run: npm run lint
+        # Memeriksa aturan penulisan kode, imports yang tidak terpakai, dan best practice Next.js.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 8: Uji Coba Kompilasi Production Build Next.js
+      # ------------------------------------------------------------------------
+      - name: 🚀 8. Build Next.js Application
+        run: npm run build
+        # Melakukan proses kompilasi production build. Jika langkah ini berhasil (hijau),
+        # artinya aplikasi aman dan siap dideploy ke Vercel tanpa error build.
