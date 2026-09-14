@@ -570,7 +570,7 @@ afm_apps/
 > Fokus: bisa input dan lihat data dasar
 
 - [x] Project setup (Next.js + Prisma + Supabase + shadcn/ui)
-- [ ] Auth (login/register)
+- [x] Auth (login/register)
 - [ ] CRUD Products (form + list + modal detail)
 - [ ] CRUD Platforms (form + list + modal detail)
 - [ ] CRUD Personas (form + list + modal detail)
