@@ -21,6 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -101,7 +102,9 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <ThemeToggle />
+
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold">{user?.name || "User"}</p>
               <p className="text-xs text-slate-500">{user?.email}</p>
