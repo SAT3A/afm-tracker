@@ -28,22 +28,26 @@ import { Badge } from "@/components/ui/badge";
 export default async function DashboardPage() {
   const user = await getCurrentUser();
 
-  // Fetch real-time metrics in parallel
-  const [
-    productCount,
-    activeProductCount,
-    platformCount,
-    personaCount,
-    distributionCount,
-    pendingApprovalCount,
-    recentDistributions,
-  ] = await Promise.all([
-    prisma.product.count(),
-    prisma.product.count({ where: { status: "active" } }),
-    prisma.platform.count(),
-    prisma.persona.count(),
-    prisma.distribution.count(),
-    prisma.distribution.count({ where: { status: "pending_approval" } }),
+  // Fetch real-time metrics in consolidated batch
+  type CountRow = {
+    product_count: number;
+    active_product_count: number;
+    platform_count: number;
+    persona_count: number;
+    distribution_count: number;
+    pending_approval_count: number;
+  };
+
+  const [[counts], recentDistributions] = await Promise.all([
+    prisma.$queryRaw<CountRow[]>`
+      SELECT 
+        (SELECT COUNT(*) FROM products)::int as product_count,
+        (SELECT COUNT(*) FROM products WHERE status = 'active')::int as active_product_count,
+        (SELECT COUNT(*) FROM platforms)::int as platform_count,
+        (SELECT COUNT(*) FROM personas)::int as persona_count,
+        (SELECT COUNT(*) FROM distributions)::int as distribution_count,
+        (SELECT COUNT(*) FROM distributions WHERE status = 'pending_approval')::int as pending_approval_count
+    `,
     prisma.distribution.findMany({
       take: 5,
       orderBy: { postedAt: "desc" },
@@ -58,6 +62,13 @@ export default async function DashboardPage() {
       },
     }),
   ]);
+
+  const productCount = counts?.product_count ?? 0;
+  const activeProductCount = counts?.active_product_count ?? 0;
+  const platformCount = counts?.platform_count ?? 0;
+  const personaCount = counts?.persona_count ?? 0;
+  const distributionCount = counts?.distribution_count ?? 0;
+  const pendingApprovalCount = counts?.pending_approval_count ?? 0;
 
   const navigationModules = [
     {
