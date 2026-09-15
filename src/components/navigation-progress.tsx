@@ -63,7 +63,7 @@ export function NavigationProgress() {
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none h-1 bg-transparent">
       <div
         ref={barRef}
-        className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-500 shadow-sm shadow-blue-500/50 transition-all duration-300 ease-out opacity-0"
+        className="h-full bg-gradient-to-r from-[#2563EB] to-[#14B8A6] shadow-sm shadow-blue-500/50 transition-all duration-300 ease-out opacity-0"
         style={{ width: "0%" }}
       />
     </div>

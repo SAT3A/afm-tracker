@@ -81,7 +81,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
           {/* Search bar */}
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nama persona, niche..."
               value={search}
@@ -94,7 +94,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
           <select
             value={selectedNiche}
             onChange={(e) => setSelectedNiche(e.target.value)}
-            className="w-full sm:w-40 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-40 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Niche</option>
             {allNiches.map((niche) => (
@@ -108,7 +108,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full sm:w-32 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-32 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Status</option>
             <option value="active">Aktif</option>
@@ -122,7 +122,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
             setPersonaToEdit(null);
             setIsFormOpen(true);
           }}
-          className="gap-1.5 h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-xs"
+          className="gap-1.5 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-xs"
         >
           <Plus className="w-4 h-4" />
           Tambah Persona AI
@@ -131,13 +131,13 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
 
       {/* Grid of Personas */}
       {filteredPersonas.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-card">
+        <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
           <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-            <Users2 className="w-10 h-10 text-slate-300 dark:text-slate-700" />
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+            <Users2 className="w-10 h-10 text-muted-foreground/40" />
+            <h3 className="font-bold text-sm text-foreground">
               Belum ada persona AI yang cocok
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               {personas.length === 0
                 ? "Daftarkan persona AI pertama Anda (seperti Bagas atau Naya) untuk mulai mengelola konten dan sebaran link."
                 : "Coba ganti filter atau kata kunci pencarian Anda."}
@@ -149,7 +149,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                   setPersonaToEdit(null);
                   setIsFormOpen(true);
                 }}
-                className="mt-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                className="mt-3 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Tambah Persona Pertama
@@ -162,7 +162,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
           {filteredPersonas.map((persona) => (
             <div
               key={persona.id}
-              className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+              className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
             >
               {/* Card Header: Avatar, Name, Status & Action Menu */}
               <div>
@@ -173,24 +173,24 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                       <img
                         src={persona.avatarUrl}
                         alt={persona.name}
-                        className="w-12 h-12 rounded-xl object-cover border border-blue-500/20"
+                        className="w-12 h-12 rounded-xl object-cover border border-primary/20"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-md shadow-blue-500/15">
+                      <div className="w-12 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center shadow-md shadow-primary/15">
                         {persona.name.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
                         {persona.name}
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5">
                         {persona.status === "active" ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                             Aktif
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground">
                             Nonaktif
                           </span>
                         )}
@@ -207,7 +207,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                         setSelectedPersona(persona);
                         setIsDetailOpen(true);
                       }}
-                      className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                       title="Lihat Profil Lengkap"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -219,7 +219,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                         setPersonaToEdit(persona);
                         setIsFormOpen(true);
                       }}
-                      className="h-7 w-7 p-0 text-slate-500 hover:text-amber-600"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600"
                       title="Edit Profil"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -228,7 +228,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(persona.id, persona.name)}
-                      className="h-7 w-7 p-0 text-slate-500 hover:text-red-600"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                       title="Hapus Persona"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -238,8 +238,8 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
 
                 {/* Niches Pill Badges */}
                 <div className="space-y-1.5 mb-4">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-blue-500" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-primary" />
                     Niches
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -247,7 +247,7 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                       <Badge
                         key={niche}
                         variant="secondary"
-                        className="text-[11px] font-normal px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60"
+                        className="text-[11px] font-normal px-2 py-0.5 bg-primary/10 text-primary border border-primary/20"
                       >
                         #{niche}
                       </Badge>
@@ -257,30 +257,30 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
 
                 {/* Description snippet */}
                 {persona.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-4">
                     {persona.description}
                   </p>
                 )}
               </div>
 
               {/* Card Footer: Activity metrics */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-slate-500">
-                    <Share2 className="w-3 h-3 text-purple-500" />
+              <div className="pt-3 border-t border-border grid grid-cols-2 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-muted/40">
+                  <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+                    <Share2 className="w-3 h-3 text-teal-500" />
                     Sebaran
                   </div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  <p className="text-sm font-bold text-foreground mt-0.5">
                     {persona.distributionsCount} link
                   </p>
                 </div>
 
-                <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-slate-500">
-                    <Video className="w-3 h-3 text-blue-500" />
+                <div className="p-2 rounded-xl bg-muted/40">
+                  <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+                    <Video className="w-3 h-3 text-primary" />
                     Konten AI
                   </div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  <p className="text-sm font-bold text-foreground mt-0.5">
                     {persona.contentsCount} video
                   </p>
                 </div>

@@ -130,7 +130,7 @@ export function PersonaFormModal({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Users2 className="w-5 h-5 text-blue-600" />
+            <Users2 className="w-5 h-5 text-primary" />
             {isEditing ? "Edit Akun Persona AI" : "Tambah Persona AI Baru"}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -142,7 +142,7 @@ export function PersonaFormModal({
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {errorMsg && (
-            <div className="p-3 text-xs bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 dark:text-red-400">
+            <div className="p-3 text-xs bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
               {errorMsg}
             </div>
           )}
@@ -151,7 +151,7 @@ export function PersonaFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="personaName" className="text-xs font-semibold">
-                Nama Persona <span className="text-red-500">*</span>
+                Nama Persona <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="personaName"
@@ -171,7 +171,7 @@ export function PersonaFormModal({
                 id="personaStatus"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="active">Aktif (Bisa Buat Konten & Sebar)</option>
                 <option value="inactive">Nonaktif (Istirahat)</option>
@@ -182,13 +182,13 @@ export function PersonaFormModal({
           {/* Niches Multi-Tag Input */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold">
-              Niches & Topik Target <span className="text-red-500">*</span>
+              Niches & Topik Target <span className="text-destructive">*</span>
             </Label>
 
             {/* Selected Niches */}
-            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-lg border border-border bg-muted/30">
               {niches.length === 0 ? (
-                <span className="text-xs text-slate-400 italic">
+                <span className="text-xs text-muted-foreground italic">
                   Belum ada niche yang dipilih. Pilih dari opsi di bawah atau ketik manual.
                 </span>
               ) : (
@@ -196,13 +196,13 @@ export function PersonaFormModal({
                   <Badge
                     key={niche}
                     variant="secondary"
-                    className="gap-1 text-xs py-0.5 px-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                    className="gap-1 text-xs py-0.5 px-2 bg-primary/10 text-primary border border-primary/20"
                   >
                     #{niche}
                     <button
                       type="button"
                       onClick={() => removeNiche(niche)}
-                      className="hover:text-red-500 transition-colors"
+                      className="hover:text-destructive transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -239,7 +239,7 @@ export function PersonaFormModal({
 
             {/* Quick Suggestions Chips */}
             <div className="flex flex-wrap gap-1 pt-1">
-              <span className="text-[11px] text-slate-400 self-center mr-1">
+              <span className="text-[11px] text-muted-foreground self-center mr-1">
                 Saran:
               </span>
               {POPULAR_NICHES.filter((pn) => !niches.includes(pn)).map((pn) => (
@@ -247,7 +247,7 @@ export function PersonaFormModal({
                   type="button"
                   key={pn}
                   onClick={() => addNiche(pn)}
-                  className="text-[11px] px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 bg-background hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
+                  className="text-[11px] px-2 py-0.5 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground transition-colors"
                 >
                   +{pn}
                 </button>
@@ -285,13 +285,13 @@ export function PersonaFormModal({
           </div>
 
           {/* Social Accounts Section */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
-            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-3">
+            <Label className="text-xs font-semibold text-foreground">
               Akun Media Sosial Persona (Opsional)
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <span className="text-[11px] text-slate-500">Facebook</span>
+                <span className="text-[11px] text-muted-foreground">Facebook</span>
                 <Input
                   placeholder="Nama Akun FB / Halaman"
                   value={fbAccount}
@@ -300,7 +300,7 @@ export function PersonaFormModal({
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-[11px] text-slate-500">Instagram</span>
+                <span className="text-[11px] text-muted-foreground">Instagram</span>
                 <Input
                   placeholder="@username.ig"
                   value={igAccount}
@@ -309,7 +309,7 @@ export function PersonaFormModal({
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-[11px] text-slate-500">TikTok</span>
+                <span className="text-[11px] text-muted-foreground">TikTok</span>
                 <Input
                   placeholder="@username.tiktok"
                   value={tiktokAccount}
@@ -318,7 +318,7 @@ export function PersonaFormModal({
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-[11px] text-slate-500">Threads</span>
+                <span className="text-[11px] text-muted-foreground">Threads</span>
                 <Input
                   placeholder="@username.threads"
                   value={threadsAccount}
@@ -329,7 +329,7 @@ export function PersonaFormModal({
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -343,7 +343,7 @@ export function PersonaFormModal({
               type="submit"
               size="sm"
               disabled={isPending}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isPending ? (
                 <>

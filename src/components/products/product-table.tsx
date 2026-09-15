@@ -106,19 +106,19 @@ export function ProductTable({ products, categories }: ProductTableProps) {
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
             Aktif
           </span>
         );
       case "paused":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
             Ditunda
           </span>
         );
       case "expired":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
             Expired
           </span>
         );
@@ -134,7 +134,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
         <div className="flex flex-1 flex-col sm:flex-row gap-2.5 items-center">
           {/* Search bar */}
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nama, brand, campaign..."
               value={search}
@@ -148,7 +148,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+              className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
             >
               <option value="all">Semua Kategori</option>
               {categories.map((cat) => (
@@ -162,7 +162,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+              className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
             >
               <option value="all">Semua Status</option>
               <option value="active">🟢 Aktif</option>
@@ -178,7 +178,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
             setProductToEdit(null);
             setIsFormOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 h-9 text-xs font-semibold shadow-sm shrink-0"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 h-9 text-xs font-semibold shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" />
           Tambah Produk
@@ -186,32 +186,32 @@ export function ProductTable({ products, categories }: ProductTableProps) {
       </div>
 
       {/* Table Card */}
-      <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-card overflow-hidden shadow-sm">
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <Table>
-          <TableHeader className="bg-slate-50/70 dark:bg-slate-900/70">
+          <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 w-[280px]">
+              <TableHead className="text-xs font-semibold text-muted-foreground w-[280px]">
                 Produk & Brand
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-xs font-semibold text-muted-foreground">
                 Kategori
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-xs font-semibold text-muted-foreground">
                 Harga
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-xs font-semibold text-muted-foreground">
                 Komisi (%)
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-xs font-semibold text-muted-foreground">
                 Link Affiliate
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <TableHead className="text-xs font-semibold text-muted-foreground">
                 Status
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center">
+              <TableHead className="text-xs font-semibold text-muted-foreground text-center">
                 Aktivitas
               </TableHead>
-              <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-right">
+              <TableHead className="text-xs font-semibold text-muted-foreground text-right">
                 Aksi
               </TableHead>
             </TableRow>
@@ -220,14 +220,14 @@ export function ProductTable({ products, categories }: ProductTableProps) {
             {filteredProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-44 text-center">
-                  <div className="flex flex-col items-center justify-center text-slate-500">
-                    <Package className="w-10 h-10 stroke-[1.3] text-slate-300 dark:text-slate-700 mb-2" />
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <Package className="w-10 h-10 stroke-[1.3] text-muted-foreground/40 mb-2" />
                     <p className="text-sm font-semibold">
                       {products.length === 0
                         ? "Belum ada produk yang ditambahkan"
                         : "Tidak ada produk yang cocok dengan pencarian"}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {products.length === 0
                         ? "Mulai dengan menambahkan produk affiliate Shopee pertama Anda."
                         : "Coba ubah kata kunci atau filter yang Anda gunakan."}
@@ -239,7 +239,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                           setProductToEdit(null);
                           setIsFormOpen(true);
                         }}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                        className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
                         Tambah Produk Sekarang
@@ -254,7 +254,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                 return (
                   <TableRow
                     key={item.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 cursor-pointer"
+                    className="hover:bg-muted/40 cursor-pointer"
                     onClick={() => {
                       setSelectedProduct(item);
                       setIsDetailOpen(true);
@@ -263,14 +263,14 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                     {/* Produk & Brand */}
                     <TableCell className="py-3">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
                           {item.brand}
                         </span>
-                        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 line-clamp-1 hover:text-blue-600 transition-colors">
+                        <p className="text-xs font-semibold text-foreground line-clamp-1 hover:text-primary transition-colors">
                           {item.productName}
                         </p>
                         {item.variant && (
-                          <p className="text-[11px] text-slate-400 line-clamp-1">
+                          <p className="text-[11px] text-muted-foreground line-clamp-1">
                             Var: {item.variant}
                           </p>
                         )}
@@ -278,7 +278,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                     </TableCell>
 
                     {/* Kategori */}
-                    <TableCell className="text-xs text-slate-600 dark:text-slate-400">
+                    <TableCell className="text-xs text-muted-foreground">
                       {item.category}
                     </TableCell>
 
@@ -289,10 +289,10 @@ export function ProductTable({ products, categories }: ProductTableProps) {
 
                     {/* Komisi */}
                     <TableCell className="whitespace-nowrap">
-                      <div className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                      <div className="text-xs font-bold text-primary">
                         {item.commissionRate}%
                       </div>
-                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">
                         Rp {Math.round(item.commissionAmount).toLocaleString("id-ID")}
                       </div>
                     </TableCell>
@@ -311,7 +311,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                         >
                           {isCopied ? (
                             <>
-                              <Check className="w-3 h-3 text-emerald-500" />
+                              <Check className="w-3 h-3 text-teal-500" />
                               Tersalin
                             </>
                           ) : (
@@ -326,7 +326,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                           href={item.affiliateLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                          className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           title="Buka Link di Tab Baru"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -341,16 +341,16 @@ export function ProductTable({ products, categories }: ProductTableProps) {
 
                     {/* Aktivitas Sebaran & Konten */}
                     <TableCell className="text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-2 text-xs text-slate-500">
+                      <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                         <span
-                          className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400"
+                          className="inline-flex items-center gap-1 text-[11px] text-teal-600 dark:text-teal-400"
                           title="Jumlah Sebaran di Grup"
                         >
                           <Share2 className="w-3 h-3" />
                           {item.distributionsCount}
                         </span>
                         <span
-                          className="inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400"
+                          className="inline-flex items-center gap-1 text-[11px] text-primary"
                           title="Jumlah Konten Video AI"
                         >
                           <Video className="w-3 h-3" />
@@ -365,8 +365,8 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer outline-none">
-                          <MoreVertical className="w-4 h-4 text-slate-500" />
+                        <DropdownMenuTrigger className="p-1.5 rounded-lg hover:bg-muted cursor-pointer outline-none">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-36">
                           <DropdownMenuItem
@@ -391,7 +391,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(item.id)}
-                            className="cursor-pointer gap-2 text-xs text-red-600 dark:text-red-400 focus:text-red-600"
+                            className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Hapus

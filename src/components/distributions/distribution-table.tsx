@@ -151,34 +151,34 @@ export function DistributionTable({
     switch (status) {
       case "approved":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
             <CheckCircle2 className="w-3 h-3" />
             Disetujui
           </span>
         );
       case "pending_approval":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
             <ShieldAlert className="w-3 h-3" />
             Pending Approval
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
             <XCircle className="w-3 h-3" />
             Ditolak
           </span>
         );
       case "deleted":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground">
             Dihapus
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
             Posted
           </span>
         );
@@ -196,7 +196,7 @@ export function DistributionTable({
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
           {/* Search bar */}
           <div className="relative w-full sm:w-60">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari grup, persona, produk..."
               value={search}
@@ -209,7 +209,7 @@ export function DistributionTable({
           <select
             value={selectedPlatform}
             onChange={(e) => setSelectedPlatform(e.target.value)}
-            className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary font-medium"
           >
             <option value="all">Semua Grup / Platform</option>
             {platforms.map((plat) => (
@@ -223,7 +223,7 @@ export function DistributionTable({
           <select
             value={selectedPersona}
             onChange={(e) => setSelectedPersona(e.target.value)}
-            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary font-medium"
           >
             <option value="all">Semua Persona</option>
             {personas.map((pers) => (
@@ -237,7 +237,7 @@ export function DistributionTable({
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full sm:w-32 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-32 h-9 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary font-medium"
           >
             <option value="all">Semua Tipe</option>
             <option value="comment">💬 Komentar</option>
@@ -248,7 +248,7 @@ export function DistributionTable({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary font-medium"
           >
             <option value="all">Semua Status</option>
             <option value="posted">Posted</option>
@@ -264,7 +264,7 @@ export function DistributionTable({
             setDistToEdit(null);
             setIsFormOpen(true);
           }}
-          className="gap-1.5 h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-xs"
+          className="gap-1.5 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-xs"
         >
           <Plus className="w-4 h-4" />
           Catat Sebar Link
@@ -272,33 +272,33 @@ export function DistributionTable({
       </div>
 
       {/* Main Distributions Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-card shadow-xs overflow-hidden">
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[260px] text-xs font-semibold">
+                <TableHead className="w-[260px] text-xs font-semibold text-muted-foreground">
                   Target Grup / Channel
                 </TableHead>
-                <TableHead className="w-[120px] text-xs font-semibold">
+                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground">
                   Persona
                 </TableHead>
-                <TableHead className="w-[110px] text-xs font-semibold">
+                <TableHead className="w-[110px] text-xs font-semibold text-muted-foreground">
                   Tipe Sebar
                 </TableHead>
-                <TableHead className="w-[200px] text-xs font-semibold">
+                <TableHead className="w-[200px] text-xs font-semibold text-muted-foreground">
                   Produk Terkait
                 </TableHead>
-                <TableHead className="w-[130px] text-xs font-semibold text-center">
+                <TableHead className="w-[130px] text-xs font-semibold text-muted-foreground text-center">
                   Status
                 </TableHead>
-                <TableHead className="w-[130px] text-xs font-semibold">
+                <TableHead className="w-[130px] text-xs font-semibold text-muted-foreground">
                   Waktu Sebar
                 </TableHead>
-                <TableHead className="w-[60px] text-xs font-semibold text-center">
+                <TableHead className="w-[60px] text-xs font-semibold text-muted-foreground text-center">
                   Link
                 </TableHead>
-                <TableHead className="w-[110px] text-xs font-semibold text-right">
+                <TableHead className="w-[110px] text-xs font-semibold text-muted-foreground text-right">
                   Aksi
                 </TableHead>
               </TableRow>
@@ -308,14 +308,14 @@ export function DistributionTable({
                 <TableRow>
                   <TableCell
                     colSpan={8}
-                    className="h-44 text-center text-slate-500"
+                    className="h-44 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Share2 className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                      <Share2 className="w-8 h-8 text-muted-foreground/40" />
                       <p className="text-sm font-medium">
                         Belum ada sebaran link yang dicatat.
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground/80">
                         {distributions.length === 0
                           ? "Mulai dengan menyebarkan link produk affiliate ke grup target (bisa satuan atau batch multi-grup)."
                           : "Coba ubah filter pencarian Anda."}
@@ -327,7 +327,7 @@ export function DistributionTable({
                             setDistToEdit(null);
                             setIsFormOpen(true);
                           }}
-                          className="mt-2 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                          className="mt-2 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Catat Sebar Link Pertama
@@ -340,7 +340,7 @@ export function DistributionTable({
                 filteredDistributions.map((item) => (
                   <TableRow
                     key={item.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 group"
+                    className="hover:bg-muted/50 group"
                   >
                     {/* Platform */}
                     <TableCell className="py-3">
@@ -351,7 +351,7 @@ export function DistributionTable({
                             setSelectedDist(item);
                             setIsDetailOpen(true);
                           }}
-                          className="font-bold text-xs text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 text-left transition-colors"
+                          className="font-bold text-xs text-foreground hover:text-primary text-left transition-colors"
                         >
                           {item.platform.name}
                         </button>
@@ -363,7 +363,7 @@ export function DistributionTable({
                             {item.platform.platformType}
                           </Badge>
                           {item.campaign && (
-                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                            <span className="text-[10px] text-primary font-medium">
                               #{item.campaign}
                             </span>
                           )}
@@ -374,10 +374,10 @@ export function DistributionTable({
                     {/* Persona */}
                     <TableCell className="py-3">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground font-bold text-[10px] flex items-center justify-center shrink-0">
                           {item.persona.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                        <span className="text-xs font-medium text-foreground">
                           {item.persona.name}
                         </span>
                       </div>
@@ -385,7 +385,7 @@ export function DistributionTable({
 
                     {/* Distribution Type */}
                     <TableCell className="py-3">
-                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <span className="text-xs font-medium text-muted-foreground">
                         {item.distributionType === "comment"
                           ? "💬 Komentar"
                           : "📝 Post"}
@@ -395,11 +395,11 @@ export function DistributionTable({
                     {/* Products */}
                     <TableCell className="py-3">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-xs font-medium text-slate-800 dark:text-slate-200">
-                          <Package className="w-3.5 h-3.5 text-blue-500" />
+                        <div className="flex items-center gap-1 text-xs font-medium text-foreground">
+                          <Package className="w-3.5 h-3.5 text-primary" />
                           <span>{item.items.length} Produk</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate max-w-[190px]">
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[190px]">
                           {item.items.map((i) => i.product.productName).join(", ")}
                         </p>
                       </div>
@@ -411,7 +411,7 @@ export function DistributionTable({
                     </TableCell>
 
                     {/* Posted At */}
-                    <TableCell className="py-3 text-xs text-slate-500">
+                    <TableCell className="py-3 text-xs text-muted-foreground">
                       {new Date(item.postedAt).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "short",
@@ -427,13 +427,13 @@ export function DistributionTable({
                           href={item.postUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                           title="Buka Postingan"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       ) : (
-                        <span className="text-[11px] text-slate-300 dark:text-slate-700">
+                        <span className="text-[11px] text-muted-foreground/50">
                           -
                         </span>
                       )}
@@ -449,7 +449,7 @@ export function DistributionTable({
                             setSelectedDist(item);
                             setIsDetailOpen(true);
                           }}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                           title="Lihat Detail & Salin Link"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -461,7 +461,7 @@ export function DistributionTable({
                             setDistToEdit(item);
                             setIsFormOpen(true);
                           }}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-amber-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-accent"
                           title="Edit Sebaran"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -470,7 +470,7 @@ export function DistributionTable({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(item.id)}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-red-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                           title="Hapus Sebaran"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -485,12 +485,12 @@ export function DistributionTable({
         </div>
 
         {/* Table Summary Footer */}
-        <div className="px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-[11px] text-slate-500 flex items-center justify-between">
+        <div className="px-4 py-2.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground flex items-center justify-between">
           <span>
             Menampilkan {filteredDistributions.length} dari{" "}
             {distributions.length} sebaran link
           </span>
-          <span className="text-slate-400">
+          <span className="text-muted-foreground/80">
             Gunakan fitur batch sebar link untuk mendistribusikan ke banyak grup sekaligus
           </span>
         </div>

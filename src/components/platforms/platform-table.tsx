@@ -104,7 +104,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
     switch (type) {
       case "facebook":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
             Facebook
           </span>
         );
@@ -116,7 +116,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
         );
       case "threads":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-foreground border border-border">
             Threads
           </span>
         );
@@ -128,7 +128,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
             Lainnya
           </span>
         );
@@ -146,7 +146,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
           {/* Search bar */}
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nama grup, catatan, link..."
               value={search}
@@ -159,7 +159,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Platform</option>
             <option value="facebook">Facebook</option>
@@ -173,7 +173,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-44 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Kategori</option>
             {categories.map((cat) => (
@@ -187,7 +187,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           <select
             value={selectedApproval}
             onChange={(e) => setSelectedApproval(e.target.value)}
-            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Moderasi</option>
             <option value="free">Bebas Post</option>
@@ -198,7 +198,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full sm:w-28 h-9 px-3 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+            className="w-full sm:w-28 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Status</option>
             <option value="active">Aktif</option>
@@ -212,7 +212,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
             setPlatformToEdit(null);
             setIsFormOpen(true);
           }}
-          className="gap-1.5 h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-xs"
+          className="gap-1.5 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-xs"
         >
           <Plus className="w-4 h-4" />
           Tambah Platform / Grup
@@ -220,30 +220,30 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
       </div>
 
       {/* Main Platforms Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-card shadow-xs overflow-hidden">
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[300px] text-xs font-semibold">
+                <TableHead className="w-[300px] text-xs font-semibold text-muted-foreground">
                   Nama Platform & Grup
                 </TableHead>
-                <TableHead className="w-[120px] text-xs font-semibold">
+                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground">
                   Tipe
                 </TableHead>
-                <TableHead className="w-[140px] text-xs font-semibold">
+                <TableHead className="w-[140px] text-xs font-semibold text-muted-foreground">
                   Moderasi Post
                 </TableHead>
-                <TableHead className="w-[100px] text-xs font-semibold text-center">
+                <TableHead className="w-[100px] text-xs font-semibold text-muted-foreground text-center">
                   Sebaran
                 </TableHead>
-                <TableHead className="w-[90px] text-xs font-semibold text-center">
+                <TableHead className="w-[90px] text-xs font-semibold text-muted-foreground text-center">
                   Status
                 </TableHead>
-                <TableHead className="w-[70px] text-xs font-semibold text-center">
+                <TableHead className="w-[70px] text-xs font-semibold text-muted-foreground text-center">
                   Link
                 </TableHead>
-                <TableHead className="w-[120px] text-xs font-semibold text-right">
+                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground text-right">
                   Aksi
                 </TableHead>
               </TableRow>
@@ -253,14 +253,14 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="h-44 text-center text-slate-500"
+                    className="h-44 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Globe className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                      <Globe className="w-8 h-8 text-muted-foreground/40" />
                       <p className="text-sm font-medium">
                         Tidak ada platform atau grup yang ditemukan.
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {platforms.length === 0
                           ? "Mulai dengan menambahkan grup Facebook atau akun media sosial pertama Anda."
                           : "Coba ubah kata kunci pencarian atau filter di atas."}
@@ -272,7 +272,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                             setPlatformToEdit(null);
                             setIsFormOpen(true);
                           }}
-                          className="mt-2 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                          className="mt-2 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Tambah Platform Pertama
@@ -285,7 +285,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                 filteredPlatforms.map((item) => (
                   <TableRow
                     key={item.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 group"
+                    className="hover:bg-muted/40 group"
                   >
                     {/* Platform Name & Category */}
                     <TableCell className="py-3">
@@ -297,7 +297,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                               setSelectedPlatform(item);
                               setIsDetailOpen(true);
                             }}
-                            className="font-bold text-xs text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 text-left transition-colors"
+                            className="font-bold text-xs text-foreground hover:text-primary text-left transition-colors"
                           >
                             {item.name}
                           </button>
@@ -305,12 +305,12 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className="text-[10px] font-normal text-slate-500"
+                            className="text-[10px] font-normal text-muted-foreground"
                           >
                             {item.category}
                           </Badge>
                           {item.notes && (
-                            <span className="text-[10px] text-slate-400 truncate max-w-[180px]">
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
                               {item.notes}
                             </span>
                           )}
@@ -326,13 +326,13 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                     {/* Moderation / Approval Status */}
                     <TableCell className="py-3">
                       {item.requiresApproval ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                           <ShieldAlert className="w-3 h-3" />
                           Butuh Approval
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground">
+                          <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
                           Bebas Post
                         </span>
                       )}
@@ -340,8 +340,8 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
 
                     {/* Distributions count */}
                     <TableCell className="py-3 text-center">
-                      <div className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        <Share2 className="w-3.5 h-3.5 text-purple-500" />
+                      <div className="inline-flex items-center gap-1 text-xs font-semibold text-foreground">
+                        <Share2 className="w-3.5 h-3.5 text-teal-500" />
                         {item.distributionsCount}
                       </div>
                     </TableCell>
@@ -349,11 +349,11 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                     {/* Status badge */}
                     <TableCell className="py-3 text-center">
                       {item.status === "active" ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                           Aktif
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground">
                           Nonaktif
                         </span>
                       )}
@@ -366,13 +366,13 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                           href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                           title="Buka URL Platform/Grup"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       ) : (
-                        <span className="text-[11px] text-slate-300 dark:text-slate-700">
+                        <span className="text-[11px] text-muted-foreground/50">
                           -
                         </span>
                       )}
@@ -388,7 +388,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                             setSelectedPlatform(item);
                             setIsDetailOpen(true);
                           }}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                           title="Lihat Detail"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -400,7 +400,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                             setPlatformToEdit(item);
                             setIsFormOpen(true);
                           }}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-amber-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600"
                           title="Edit Platform"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -409,7 +409,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(item.id, item.name)}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-red-600"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                           title="Hapus Platform"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -424,11 +424,11 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
         </div>
 
         {/* Table Footer / Summary */}
-        <div className="px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-[11px] text-slate-500 flex items-center justify-between">
+        <div className="px-4 py-2.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground flex items-center justify-between">
           <span>
             Menampilkan {filteredPlatforms.length} dari {platforms.length} platform
           </span>
-          <span className="text-slate-400">
+          <span className="text-muted-foreground">
             Klik nama atau ikon mata untuk melihat detail lengkap & aturan grup
           </span>
         </div>

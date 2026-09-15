@@ -96,7 +96,7 @@ export function ProductFormModal({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Sparkles className="w-5 h-5 text-blue-600" />
+            <Sparkles className="w-5 h-5 text-primary" />
             {isEditing ? "Edit Produk Affiliate" : "Tambah Produk Baru"}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -143,7 +143,7 @@ export function ProductFormModal({
                 placeholder="Pilih / ketik kategori"
                 defaultValue={productToEdit?.category || ""}
                 required
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-background text-sm outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
               <datalist id="category-options">
                 {CATEGORY_SUGGESTIONS.map((cat) => (
@@ -198,7 +198,7 @@ export function ProductFormModal({
               placeholder="https://s.shopee.co.id/..."
               defaultValue={productToEdit?.affiliateLink || ""}
               required
-              className="h-9 text-sm font-mono text-blue-600 dark:text-blue-400"
+              className="h-9 text-sm font-mono text-primary"
             />
             {errors.affiliateLink && (
               <p className="text-[11px] text-red-500">
@@ -216,25 +216,25 @@ export function ProductFormModal({
               name="originalLink"
               placeholder="https://shopee.co.id/product/..."
               defaultValue={productToEdit?.originalLink || ""}
-              className="h-9 text-sm font-mono text-slate-500"
+              className="h-9 text-sm font-mono text-muted-foreground"
             />
           </div>
 
           {/* Row 4: Harga & Komisi & Live Calculator */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-3">
+            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
               <span className="flex items-center gap-1.5">
-                <Calculator className="w-3.5 h-3.5 text-blue-600" />
+                <Calculator className="w-3.5 h-3.5 text-primary" />
                 Harga & Perhitungan Komisi
               </span>
-              <span className="text-blue-600 dark:text-blue-400 font-bold">
+              <span className="text-primary font-bold">
                 Est. Komisi: Rp {Math.round(estimatedCommission).toLocaleString("id-ID")}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="price" className="text-[11px] text-slate-500">
+                <Label htmlFor="price" className="text-[11px] text-muted-foreground">
                   Harga Produk (Rp)
                 </Label>
                 <Input
@@ -254,7 +254,7 @@ export function ProductFormModal({
               <div className="space-y-1">
                 <Label
                   htmlFor="commissionRate"
-                  className="text-[11px] text-slate-500"
+                  className="text-[11px] text-muted-foreground"
                 >
                   Komisi (%)
                 </Label>
@@ -300,7 +300,7 @@ export function ProductFormModal({
                 id="status"
                 name="status"
                 defaultValue={productToEdit?.status || "active"}
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-background text-sm outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="active">🟢 Active (Aktif)</option>
                 <option value="paused">🟡 Paused (Ditunda)</option>
@@ -336,7 +336,7 @@ export function ProductFormModal({
             />
           </div>
 
-          <DialogFooter className="pt-3 border-t border-slate-200 dark:border-slate-800">
+          <DialogFooter className="pt-3 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -349,7 +349,7 @@ export function ProductFormModal({
             <Button
               type="submit"
               disabled={isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
             >
               {isPending ? (
                 <>

@@ -240,7 +240,7 @@ export function DistributionFormModal({
       <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Share2 className="w-5 h-5 text-blue-600" />
+            <Share2 className="w-5 h-5 text-primary" />
             {isEditing
               ? "Edit Data Sebar Link"
               : mode === "single"
@@ -256,14 +256,14 @@ export function DistributionFormModal({
 
         {/* Tab switch mode (Single vs Batch) when creating */}
         {!isEditing && (
-          <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
+          <div className="flex p-1 bg-muted rounded-xl">
             <button
               type="button"
               onClick={() => setMode("single")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 mode === "single"
-                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "bg-card text-primary shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -274,8 +274,8 @@ export function DistributionFormModal({
               onClick={() => setMode("batch")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 mode === "batch"
-                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "bg-card text-primary shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -286,7 +286,7 @@ export function DistributionFormModal({
 
         <form onSubmit={handleSubmit} className="space-y-4 py-1">
           {errorMsg && (
-            <div className="p-3 text-xs bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 dark:text-red-400">
+            <div className="p-3 text-xs bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
               {errorMsg}
             </div>
           )}
@@ -295,14 +295,14 @@ export function DistributionFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Users2 className="w-3.5 h-3.5 text-blue-600" />
-                Akun Persona AI <span className="text-red-500">*</span>
+                <Users2 className="w-3.5 h-3.5 text-primary" />
+                Akun Persona AI <span className="text-destructive">*</span>
               </Label>
               <select
                 value={personaId}
                 onChange={(e) => setPersonaId(e.target.value)}
                 required
-                className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+                className="w-full h-9 px-3 text-xs rounded-md border border-border bg-background outline-none focus:border-primary font-medium"
               >
                 {personas.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -322,8 +322,8 @@ export function DistributionFormModal({
                   onClick={() => setDistributionType("comment")}
                   className={`h-9 text-xs font-medium rounded-md border transition-colors ${
                     distributionType === "comment"
-                      ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-primary/10 border-primary text-primary font-semibold"
+                      : "border-border hover:bg-muted text-foreground"
                   }`}
                 >
                   💬 Komentar Post
@@ -333,8 +333,8 @@ export function DistributionFormModal({
                   onClick={() => setDistributionType("post")}
                   className={`h-9 text-xs font-medium rounded-md border transition-colors ${
                     distributionType === "post"
-                      ? "bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-primary/10 border-primary text-primary font-semibold"
+                      : "border-border hover:bg-muted text-foreground"
                   }`}
                 >
                   📝 Postingan Baru
@@ -347,14 +347,14 @@ export function DistributionFormModal({
           {mode === "single" || isEditing ? (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-blue-600" />
-                Target Platform / Grup <span className="text-red-500">*</span>
+                <Globe className="w-3.5 h-3.5 text-primary" />
+                Target Platform / Grup <span className="text-destructive">*</span>
               </Label>
               <select
                 value={platformId}
                 onChange={(e) => setPlatformId(e.target.value)}
                 required
-                className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500 font-medium"
+                className="w-full h-9 px-3 text-xs rounded-md border border-border bg-background outline-none focus:border-primary font-medium"
               >
                 {platforms.map((plat) => (
                   <option key={plat.id} value={plat.id}>
@@ -369,14 +369,14 @@ export function DistributionFormModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  <Globe className="w-3.5 h-3.5 text-primary" />
                   Pilih Grup Target ({batchPlatformIds.length} grup dipilih){" "}
-                  <span className="text-red-500">*</span>
+                  <span className="text-destructive">*</span>
                 </Label>
                 <button
                   type="button"
                   onClick={selectAllPlatforms}
-                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-[11px] text-primary hover:underline font-medium"
                 >
                   {batchPlatformIds.length === platforms.length
                     ? "Batal Pilih Semua"
@@ -385,7 +385,7 @@ export function DistributionFormModal({
               </div>
 
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Cari grup..."
                   value={platformSearch}
@@ -394,7 +394,7 @@ export function DistributionFormModal({
                 />
               </div>
 
-              <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/60 p-1">
+              <div className="max-h-36 overflow-y-auto rounded-lg border border-border divide-y divide-border/60 p-1">
                 {filteredPlatforms.map((plat) => {
                   const isChecked = batchPlatformIds.includes(plat.id);
                   return (
@@ -403,21 +403,21 @@ export function DistributionFormModal({
                       onClick={() => toggleBatchPlatform(plat.id)}
                       className={`flex items-center justify-between p-2 rounded-md cursor-pointer text-xs transition-colors ${
                         isChecked
-                          ? "bg-blue-50/80 dark:bg-blue-950/40 font-medium"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-900"
+                          ? "bg-primary/10 font-medium"
+                          : "hover:bg-muted"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
                             isChecked
-                              ? "bg-blue-600 border-blue-600 text-white"
-                              : "border-slate-300 dark:border-slate-700"
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border"
                           }`}
                         >
                           {isChecked && <Check className="w-3 h-3" />}
                         </div>
-                        <span className="text-slate-800 dark:text-slate-200">
+                        <span className="text-foreground">
                           {plat.name}
                         </span>
                       </div>
@@ -429,7 +429,7 @@ export function DistributionFormModal({
                           {plat.platformType}
                         </Badge>
                         {plat.requiresApproval && (
-                          <span className="text-[10px] text-amber-500 font-medium">
+                          <span className="text-[10px] text-accent font-medium">
                             Approval
                           </span>
                         )}
@@ -445,17 +445,17 @@ export function DistributionFormModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-blue-600" />
+                <Package className="w-3.5 h-3.5 text-primary" />
                 Produk yang Disebar ({selectedProductIds.length} dipilih){" "}
-                <span className="text-red-500">*</span>
+                <span className="text-destructive">*</span>
               </Label>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-muted-foreground">
                 1 sebaran bisa berisi multiple link produk
               </span>
             </div>
 
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari produk berdasarkan nama / brand..."
                 value={productSearch}
@@ -464,7 +464,7 @@ export function DistributionFormModal({
               />
             </div>
 
-            <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/60 p-1">
+            <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border/60 p-1">
               {filteredProducts.map((prod) => {
                 const isChecked = selectedProductIds.includes(prod.id);
                 return (
@@ -473,34 +473,34 @@ export function DistributionFormModal({
                     onClick={() => toggleProduct(prod.id)}
                     className={`flex items-center justify-between p-2 rounded-md cursor-pointer text-xs transition-colors ${
                       isChecked
-                        ? "bg-blue-50/80 dark:bg-blue-950/40 font-medium"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-900"
+                        ? "bg-primary/10 font-medium"
+                        : "hover:bg-muted"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <div
                         className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
                           isChecked
-                            ? "bg-blue-600 border-blue-600 text-white"
-                            : "border-slate-300 dark:border-slate-700"
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-border"
                         }`}
                       >
                         {isChecked && <Check className="w-3 h-3" />}
                       </div>
                       <div>
-                        <span className="text-slate-900 dark:text-slate-100">
+                        <span className="text-foreground">
                           {prod.productName}
                         </span>
-                        <span className="text-slate-400 text-[11px] ml-1.5">
+                        <span className="text-muted-foreground text-[11px] ml-1.5">
                           ({prod.brand})
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span className="text-[11px] text-secondary font-semibold">
                         {prod.commissionRate}%
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-muted-foreground">
                         Rp {prod.price.toLocaleString("id-ID")}
                       </span>
                     </div>
@@ -534,7 +534,7 @@ export function DistributionFormModal({
                   id="statusSelect"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500"
+                  className="w-full h-9 px-3 text-xs rounded-md border border-border bg-background outline-none focus:border-primary"
                 >
                   <option value="posted">Langsung Terbit (Posted)</option>
                   <option value="pending_approval">
@@ -577,7 +577,7 @@ export function DistributionFormModal({
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -591,7 +591,7 @@ export function DistributionFormModal({
               type="submit"
               size="sm"
               disabled={isPending}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isPending ? (
                 <>

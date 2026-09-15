@@ -120,7 +120,7 @@ export function PlatformFormModal({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Globe className="w-5 h-5 text-blue-600" />
+            <Globe className="w-5 h-5 text-primary" />
             {isEditing ? "Edit Platform / Grup" : "Tambah Platform / Grup Baru"}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -132,7 +132,7 @@ export function PlatformFormModal({
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {errorMsg && (
-            <div className="p-3 text-xs bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 dark:text-red-400">
+            <div className="p-3 text-xs bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
               {errorMsg}
             </div>
           )}
@@ -140,7 +140,7 @@ export function PlatformFormModal({
           {/* Nama Platform / Grup */}
           <div className="space-y-1.5">
             <Label htmlFor="platformName" className="text-xs font-semibold">
-              Nama Platform / Grup <span className="text-red-500">*</span>
+              Nama Platform / Grup <span className="text-destructive">*</span>
             </Label>
             <Input
               id="platformName"
@@ -164,7 +164,7 @@ export function PlatformFormModal({
                 onChange={(e) =>
                   setPlatformType(e.target.value as PlatformData["platformType"])
                 }
-                className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 {PLATFORM_TYPES.map((pt) => (
                   <option key={pt.value} value={pt.value}>
@@ -184,7 +184,7 @@ export function PlatformFormModal({
                 onChange={(e) =>
                   setStatus(e.target.value as PlatformData["status"])
                 }
-                className="w-full h-9 px-3 text-xs rounded-md border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="active">Aktif (Bisa Disebar)</option>
                 <option value="inactive">Nonaktif (Jangan Disebar)</option>
@@ -205,7 +205,7 @@ export function PlatformFormModal({
               onChange={(e) => setUrl(e.target.value)}
               className="text-xs"
             />
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-muted-foreground">
               Link ini akan memudahkan Anda membuka grup dengan 1 kali klik saat sebar link.
             </p>
           </div>
@@ -213,7 +213,7 @@ export function PlatformFormModal({
           {/* Kategori Grup & Suggestion Pills */}
           <div className="space-y-1.5">
             <Label htmlFor="platformCategory" className="text-xs font-semibold">
-              Kategori Platform / Grup <span className="text-red-500">*</span>
+              Kategori Platform / Grup <span className="text-destructive">*</span>
             </Label>
             <Input
               id="platformCategory"
@@ -231,8 +231,8 @@ export function PlatformFormModal({
                   onClick={() => setCategory(cat)}
                   className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
                     category === cat
-                      ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800 font-medium"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-200 dark:hover:bg-slate-700"
+                      ? "bg-primary/10 text-primary border-primary/30 font-medium"
+                      : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
                   }`}
                 >
                   {cat}
@@ -242,7 +242,7 @@ export function PlatformFormModal({
           </div>
 
           {/* Requires Approval Setting */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+          <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
@@ -258,10 +258,10 @@ export function PlatformFormModal({
                 id="requiresApprovalToggle"
                 checked={requiresApproval}
                 onChange={(e) => setRequiresApproval(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 border-slate-300 dark:border-slate-700 focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 rounded accent-primary border-input cursor-pointer"
               />
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-6">
+            <p className="text-[11px] text-muted-foreground pl-6">
               Centang jika setiap postingan atau komentar baru di grup ini harus disetujui moderator terlebih dahulu sebelum muncul ke publik.
             </p>
           </div>
@@ -281,7 +281,7 @@ export function PlatformFormModal({
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -295,7 +295,7 @@ export function PlatformFormModal({
               type="submit"
               size="sm"
               disabled={isPending}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isPending ? (
                 <>
