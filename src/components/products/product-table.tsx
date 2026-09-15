@@ -32,6 +32,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { ProductFormModal, ProductData } from "./product-form-modal";
 import { ProductDetailModal } from "./product-detail-modal";
 import { deleteProduct } from "@/app/actions/products";
@@ -65,6 +76,10 @@ export function ProductTable({ products, categories }: ProductTableProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
 
+  // Delete Alert Dialog state
+  const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   // Copy status per product id
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -74,13 +89,39 @@ export function ProductTable({ products, categories }: ProductTableProps) {
     setTimeout(() => setCopiedId(null), 1800);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
-      startTransition(async () => {
-        await deleteProduct(id);
-        router.refresh();
-      });
+  const handleRequestDelete = (id: string) => {
+    const target = products.find((p) => p.id === id);
+    if (target) {
+      setProductToDelete(target);
+      setIsDeleteDialogOpen(true);
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!productToDelete) return;
+    const target = productToDelete;
+    startTransition(async () => {
+      try {
+        const res = await deleteProduct(target.id);
+        setIsDeleteDialogOpen(false);
+        setProductToDelete(null);
+        if (res && res.success === false) {
+          toast.error("Gagal menghapus produk", {
+            description: res.message || "Terjadi kesalahan saat menghapus data.",
+          });
+        } else {
+          toast.success("Data produk berhasil dihapus", {
+            description: `Produk "${target.productName}" telah berhasil dihapus dari katalog.`,
+          });
+          router.refresh();
+        }
+      } catch (error) {
+        toast.error("Terjadi kesalahan sistem", {
+          description: "Tidak dapat menghapus produk saat ini.",
+        });
+        console.error(error);
+      }
+    });
   };
 
   // Filter products locally for instant response
@@ -390,7 +431,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => handleRequestDelete(item.id)}
                             className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -416,7 +457,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
           setProductToEdit(prod);
           setIsFormOpen(true);
         }}
-        onDelete={handleDelete}
+        onDelete={handleRequestDelete}
       />
 
       {/* Product Create / Edit Modal */}
@@ -426,6 +467,35 @@ export function ProductTable({ products, categories }: ProductTableProps) {
         productToEdit={productToEdit}
         onSuccess={() => router.refresh()}
       />
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-1">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <AlertDialogTitle>Hapus Data Produk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus produk{" "}
+              <span className="font-bold text-foreground">
+                &quot;{productToDelete?.productName}&quot;
+              </span>
+              ? Tindakan ini akan menghapus produk dari katalog secara permanen dan tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isPending}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs"
+            >
+              {isPending ? "Menghapus..." : "Ya, Hapus Produk"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

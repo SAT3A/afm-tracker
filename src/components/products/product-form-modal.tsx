@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createProduct, updateProduct } from "@/app/actions/products";
 import { Loader2, Calculator, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export type ProductData = {
   id?: string;
@@ -83,10 +84,25 @@ export function ProductFormModal({
 
       if (res.success) {
         onOpenChange(false);
+        const prodName = (formData.get("productName") as string) || productToEdit?.productName || "Produk";
+        if (isEditing) {
+          toast.success("Data berhasil diperbarui", {
+            description: `Informasi produk "${prodName}" telah berhasil disimpan.`,
+          });
+        } else {
+          toast.success("Produk berhasil ditambahkan", {
+            description: `Produk "${prodName}" telah berhasil dimasukkan ke dalam katalog.`,
+          });
+        }
         if (onSuccess) onSuccess();
       } else {
         if (res.errors) setErrors(res.errors);
-        if (res.message) setGlobalError(res.message);
+        if (res.message) {
+          setGlobalError(res.message);
+          toast.error("Gagal menyimpan produk", {
+            description: res.message,
+          });
+        }
       }
     });
   };

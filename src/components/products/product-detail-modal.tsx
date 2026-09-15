@@ -244,9 +244,9 @@ export function ProductDetailModal({
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (product.id && confirm("Yakin ingin menghapus produk ini?")) {
-                onDelete(product.id);
+              if (product.id) {
                 onOpenChange(false);
+                onDelete(product.id);
               }
             }}
             className="text-xs text-destructive hover:bg-destructive/10"
