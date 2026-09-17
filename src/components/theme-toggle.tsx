@@ -30,7 +30,7 @@ export function ThemeToggle() {
         )}
         aria-label="Mode Tema"
       >
-        <Sun className="h-4 w-4 text-accent" />
+        <Moon className="h-4 w-4 text-primary" />
       </button>
     );
   }
