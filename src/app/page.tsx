@@ -148,13 +148,13 @@ export default async function DashboardPage() {
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-4 text-white">
               <Sparkles className="w-3.5 h-3.5" />
-              AFM Tracker &bull; Affiliate Operations
+              AFM Tracker &bull; Content-to-Sales Performance
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
               Halo, {user?.name || "Partner"}! 👋
             </h1>
             <p className="mt-2 text-blue-100 text-sm sm:text-base leading-relaxed">
-              Kelola katalog produk Shopee Affiliate, sebar link ke grup-grup Facebook secara satuan maupun batch multi-grup, dan pantau persona AI Anda dengan cepat.
+              Pantau distribusi konten sosial media, analisa engagement audiens, dan validasi konten mana yang paling efektif mendorong penjualan produk affiliate Anda.
             </p>
 
             {/* Quick Action Shortcuts */}

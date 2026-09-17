@@ -35,7 +35,7 @@ export default function RegisterPage() {
             AFM Tracker
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Buat akun untuk memulai manajemen affiliate Anda
+            Buat akun untuk melacak performa konten & konversi penjualan Anda
           </p>
         </div>
 

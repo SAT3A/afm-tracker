@@ -35,7 +35,7 @@ export default function LoginPage() {
             AFM Tracker
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Affiliate & AI Content Distribution Manager
+            Content Performance & Sales Conversion Tracker
           </p>
         </div>
 

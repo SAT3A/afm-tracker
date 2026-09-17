@@ -12,8 +12,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "AFM Tracker — Affiliate & Content Distribution Manager",
-  description: "Aplikasi tracking produk affiliate Shopee, broadcast grup Facebook, dan performa konten video AI.",
+  title: "AFM Tracker — Content Performance & Sales Conversion Tracker",
+  description: "Tracking konten sosial media lintas platform, analisa engagement, dan konversi penjualan produk affiliate.",
 };
 
 export default function RootLayout({
