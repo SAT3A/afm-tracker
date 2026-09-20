@@ -22,7 +22,9 @@ const ProductSchema = z.object({
   tags: z.string().optional().nullable(),
   campaign: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  status: z.enum(["active", "expired", "paused"]).default("active"),
+  status: z
+    .enum(["active", "hold", "non_active", "expired", "paused"])
+    .default("active"),
 });
 
 export type ProductActionState = {
@@ -78,7 +80,7 @@ export async function getProducts(filter?: {
       price: Number(p.price),
       commissionRate: Number(p.commissionRate),
       commissionAmount: (Number(p.price) * Number(p.commissionRate)) / 100,
-      status: p.status as "active" | "expired" | "paused",
+      status: p.status as "active" | "hold" | "non_active",
       distributionsCount: p._count.distributionItems,
       contentsCount: p._count.contentProducts,
     }));
@@ -247,5 +249,56 @@ export async function deleteProduct(id: string): Promise<ProductActionState> {
   } catch (error) {
     console.error("Failed to delete product:", error);
     return { success: false, message: "Gagal menghapus produk." };
+  }
+}
+
+export async function updateProductStatus(
+  id: string,
+  status: "active" | "hold" | "non_active"
+): Promise<ProductActionState> {
+  try {
+    await prisma.product.update({
+      where: { id },
+      data: { status },
+    });
+
+    revalidatePath("/products");
+    revalidatePath("/");
+    return { success: true, message: "Status produk berhasil diperbarui." };
+  } catch (error) {
+    console.error("Failed to update product status:", error);
+    return { success: false, message: "Gagal memperbarui status produk." };
+  }
+}
+
+export async function getAllCampaigns(): Promise<string[]> {
+  try {
+    const [prodCampaigns, distCampaigns, contentCampaigns] = await Promise.all([
+      prisma.product.findMany({
+        where: { campaign: { not: null } },
+        select: { campaign: true },
+        distinct: ["campaign"],
+      }),
+      prisma.distribution.findMany({
+        where: { campaign: { not: null } },
+        select: { campaign: true },
+        distinct: ["campaign"],
+      }),
+      prisma.content.findMany({
+        where: { campaign: { not: null } },
+        select: { campaign: true },
+        distinct: ["campaign"],
+      }),
+    ]);
+
+    const set = new Set<string>();
+    for (const p of prodCampaigns) if (p.campaign?.trim()) set.add(p.campaign.trim());
+    for (const d of distCampaigns) if (d.campaign?.trim()) set.add(d.campaign.trim());
+    for (const c of contentCampaigns) if (c.campaign?.trim()) set.add(c.campaign.trim());
+
+    return Array.from(set).sort();
+  } catch (error) {
+    console.error("Failed to get campaigns:", error);
+    return [];
   }
 }

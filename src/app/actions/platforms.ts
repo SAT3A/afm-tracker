@@ -17,7 +17,16 @@ const PlatformSchema = z.object({
     .default("Sebar link shopee affiliate"),
   requiresApproval: z.boolean().default(false),
   notes: z.string().optional().nullable(),
-  status: z.enum(["active", "inactive"]).default("active"),
+  status: z
+    .enum([
+      "active",
+      "restricted",
+      "pending_approval",
+      "suspended",
+      "on_hiatus",
+      "inactive",
+    ])
+    .default("active"),
 });
 
 export type PlatformActionState = {
@@ -61,18 +70,24 @@ export async function getPlatforms(filter?: {
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        _count: {
+        distributions: {
           select: {
-            distributions: true,
+            distributionType: true,
           },
         },
       },
     });
 
-    return platforms.map((p) => ({
-      ...p,
-      distributionsCount: p._count.distributions,
-    }));
+    return platforms.map(({ distributions, ...p }) => {
+      const postsCount = distributions.filter((d) => d.distributionType === "post").length;
+      const sharesCount = distributions.length - postsCount;
+      return {
+        ...p,
+        distributionsCount: distributions.length,
+        sharesCount,
+        postsCount,
+      };
+    });
   } catch (error) {
     console.error("Error fetching platforms:", error);
     return [];
@@ -226,6 +241,33 @@ export async function deletePlatform(id: string): Promise<PlatformActionState> {
     return {
       success: false,
       message: "Gagal menghapus platform.",
+    };
+  }
+}
+
+export async function updatePlatformStatus(
+  id: string,
+  status: string
+): Promise<PlatformActionState> {
+  try {
+    const platform = await prisma.platform.update({
+      where: { id },
+      data: { status },
+    });
+
+    revalidatePath("/platforms");
+    revalidatePath("/distributions");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: `Status platform "${platform.name}" berhasil diperbarui.`,
+    };
+  } catch (error) {
+    console.error("Update platform status error:", error);
+    return {
+      success: false,
+      message: "Gagal memperbarui status platform.",
     };
   }
 }

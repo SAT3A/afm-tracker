@@ -30,7 +30,7 @@ export type ProductData = {
   tags?: string[];
   campaign?: string | null;
   notes?: string | null;
-  status: "active" | "expired" | "paused";
+  status: "active" | "hold" | "non_active" | string;
 };
 
 interface ProductFormModalProps {
@@ -85,14 +85,23 @@ export function ProductFormModal({
       if (res.success) {
         onOpenChange(false);
         const prodName = (formData.get("productName") as string) || productToEdit?.productName || "Produk";
+        const newStatus = formData.get("status");
         if (isEditing) {
-          toast.success("Data berhasil diperbarui", {
-            description: `Informasi produk "${prodName}" telah berhasil disimpan.`,
-          });
+          if (newStatus === "non_active") {
+            toast.error("Data berhasil diperbarui");
+          } else if (newStatus === "hold") {
+            toast.warning(`Produk ${prodName} berhasil di HOLD`);
+          } else {
+            toast.success("Data berhasil diperbarui");
+          }
         } else {
-          toast.success("Produk berhasil ditambahkan", {
-            description: `Produk "${prodName}" telah berhasil dimasukkan ke dalam katalog.`,
-          });
+          if (newStatus === "non_active") {
+            toast.error("Produk berhasil ditambahkan");
+          } else if (newStatus === "hold") {
+            toast.warning(`Produk ${prodName} berhasil di HOLD`);
+          } else {
+            toast.success("Produk berhasil ditambahkan");
+          }
         }
         if (onSuccess) onSuccess();
       } else {
@@ -157,6 +166,7 @@ export function ProductFormModal({
                 name="category"
                 list="category-options"
                 placeholder="Pilih / ketik kategori"
+                autoComplete="off"
                 defaultValue={productToEdit?.category || ""}
                 required
                 className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
@@ -316,11 +326,11 @@ export function ProductFormModal({
                 id="status"
                 name="status"
                 defaultValue={productToEdit?.status || "active"}
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
               >
-                <option value="active">🟢 Active (Aktif)</option>
-                <option value="paused">🟡 Paused (Ditunda)</option>
-                <option value="expired">🔴 Expired (Kedaluwarsa)</option>
+                <option value="active">🟢 Active</option>
+                <option value="hold">🟡 Hold</option>
+                <option value="non_active">🔴 Non Active</option>
               </select>
             </div>
           </div>

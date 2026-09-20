@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: afm-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: afm_tracker
+    ports:
+      # Port 5434 di host (laptop) di-mapping ke port 5432 di dalam container
+      # Menggunakan port 5434 agar tidak bentrok dengan PostgreSQL bawaan Windows (5432/5433)
+      - "5434:5432"
+    volumes:
+      # Named Volume untuk persistent storage agar data database tidak hilang
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    name: afm_tracker_postgres_data

@@ -112,7 +112,6 @@ export async function getDistributions(filter?: {
         },
         engagements: {
           orderBy: { capturedAt: "desc" },
-          take: 1,
         },
       },
     });
@@ -128,6 +127,7 @@ export async function getDistributions(filter?: {
         },
       })),
       latestEngagement: d.engagements[0] || null,
+      engagements: d.engagements,
     }));
   } catch (error) {
     console.error("Error fetching distributions:", error);
@@ -459,5 +459,151 @@ export async function deleteDistribution(id: string): Promise<DistributionAction
       success: false,
       message: "Gagal menghapus distribusi.",
     };
+  }
+}
+
+const DistributionEngagementSchema = z.object({
+  likesCount: z.coerce.number().min(0).default(0),
+  viewsCount: z.coerce.number().min(0).default(0),
+  sharesCount: z.coerce.number().min(0).default(0),
+  clicksCount: z.coerce.number().min(0).default(0),
+  ordersCount: z.coerce.number().min(0).optional().nullable(),
+  capturedAt: z.coerce.date().default(() => new Date()),
+});
+
+export async function addDistributionEngagement(
+  distributionId: string,
+  prevState: DistributionActionState,
+  formData: FormData
+): Promise<DistributionActionState> {
+  const rawData = {
+    likesCount: formData.get("likesCount") || 0,
+    viewsCount: formData.get("viewsCount") || 0,
+    sharesCount: formData.get("sharesCount") || 0,
+    clicksCount: formData.get("clicksCount") || 0,
+    ordersCount: formData.get("ordersCount")
+      ? Number(formData.get("ordersCount"))
+      : null,
+    capturedAt: formData.get("capturedAt") || new Date().toISOString(),
+  };
+
+  const validated = DistributionEngagementSchema.safeParse(rawData);
+
+  if (!validated.success) {
+    return {
+      success: false,
+      errors: validated.error.flatten().fieldErrors,
+      message: "Mohon periksa kembali isian angka engagement.",
+    };
+  }
+
+  try {
+    await prisma.distributionEngagement.create({
+      data: {
+        distributionId,
+        likesCount: validated.data.likesCount,
+        viewsCount: validated.data.viewsCount,
+        sharesCount: validated.data.sharesCount,
+        clicksCount: validated.data.clicksCount,
+        ordersCount: validated.data.ordersCount,
+        capturedAt: validated.data.capturedAt,
+      },
+    });
+
+    revalidatePath("/distributions");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: "Metrik engagement sebaran berhasil disimpan!",
+    };
+  } catch (error) {
+    console.error("Add distribution engagement error:", error);
+    return {
+      success: false,
+      message: "Gagal menyimpan metrik engagement.",
+    };
+  }
+}
+
+export async function deleteDistributionEngagement(
+  engagementId: string
+): Promise<DistributionActionState> {
+  try {
+    await prisma.distributionEngagement.delete({
+      where: { id: engagementId },
+    });
+
+    revalidatePath("/distributions");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: "Metrik engagement berhasil dihapus.",
+    };
+  } catch (error) {
+    console.error("Delete distribution engagement error:", error);
+    return {
+      success: false,
+      message: "Gagal menghapus engagement.",
+    };
+  }
+}
+
+export type DuplicateCheckResult = {
+  productId: string;
+  productName: string;
+  platformId: string;
+  platformName: string;
+  postedAt: string;
+  distributionType: string;
+  postUrl: string;
+};
+
+export async function checkDuplicateDistributions(
+  platformIds: string[],
+  productIds: string[]
+): Promise<DuplicateCheckResult[]> {
+  if (!platformIds.length || !productIds.length) return [];
+
+  try {
+    const existing = await prisma.distributionItem.findMany({
+      where: {
+        productId: { in: productIds },
+        distribution: {
+          platformId: { in: platformIds },
+        },
+      },
+      include: {
+        product: { select: { id: true, productName: true } },
+        distribution: {
+          select: {
+            platformId: true,
+            postedAt: true,
+            distributionType: true,
+            postUrl: true,
+            platform: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: {
+        distribution: {
+          postedAt: "desc",
+        },
+      },
+    });
+
+    return existing.map((item) => ({
+      productId: item.product.id,
+      productName: item.product.productName,
+      platformId: item.distribution.platformId,
+      platformName: item.distribution.platform.name,
+      postedAt: item.distribution.postedAt.toISOString(),
+      distributionType: item.distribution.distributionType,
+      postUrl: item.distribution.postUrl,
+    }));
+  } catch (error) {
+    console.error("Check duplicate distributions error:", error);
+    return [];
   }
 }

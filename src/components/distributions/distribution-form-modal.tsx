@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,8 @@ import {
   createSingleDistribution,
   createBatchDistribution,
   updateDistribution,
+  checkDuplicateDistributions,
+  DuplicateCheckResult,
 } from "@/app/actions/distributions";
 import {
   Loader2,
@@ -28,6 +30,7 @@ import {
   Users2,
   Search,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { DistributionItemData } from "./distribution-table";
 
@@ -60,6 +63,7 @@ interface DistributionFormModalProps {
   products: SimpleProductOption[];
   platforms: SimplePlatformOption[];
   personas: SimplePersonaOption[];
+  campaignOptions?: string[];
   onSuccess?: () => void;
 }
 
@@ -70,6 +74,7 @@ export function DistributionFormModal({
   products,
   platforms,
   personas,
+  campaignOptions = [],
   onSuccess,
 }: DistributionFormModalProps) {
   const isEditing = Boolean(distributionToEdit?.id);
@@ -111,6 +116,68 @@ export function DistributionFormModal({
   // Product search filter in modal
   const [productSearch, setProductSearch] = useState("");
   const [platformSearch, setPlatformSearch] = useState("");
+
+  // Duplicate check state
+  const [duplicates, setDuplicates] = useState<DuplicateCheckResult[]>([]);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+
+  useEffect(() => {
+    if (!open || isEditing) {
+      setDuplicates([]);
+      return;
+    }
+
+    const targetPlatforms =
+      mode === "single"
+        ? platformId
+          ? [platformId]
+          : []
+        : batchPlatformIds;
+
+    if (targetPlatforms.length === 0 || selectedProductIds.length === 0) {
+      setDuplicates([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsCheckingDuplicates(true);
+      try {
+        const res = await checkDuplicateDistributions(
+          targetPlatforms,
+          selectedProductIds
+        );
+        setDuplicates(res);
+      } catch (e) {
+        console.error("Failed to check duplicates:", e);
+      } finally {
+        setIsCheckingDuplicates(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [open, isEditing, mode, platformId, batchPlatformIds, selectedProductIds]);
+
+  // Synchronize form states when distributionToEdit changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setPersonaId(distributionToEdit?.persona.id || personas[0]?.id || "");
+      setDistributionType(
+        (distributionToEdit?.distributionType as "post" | "comment") || "comment"
+      );
+      setCampaign(distributionToEdit?.campaign || "");
+      setNotes(distributionToEdit?.notes || "");
+      setPlatformId(distributionToEdit?.platform.id || platforms[0]?.id || "");
+      setPostUrl(distributionToEdit?.postUrl || "");
+      setStatus(distributionToEdit?.status || "posted");
+      setSelectedProductIds(
+        distributionToEdit?.items.map((i) => i.product.id) || []
+      );
+      setBatchPlatformIds([]);
+      setProductSearch("");
+      setPlatformSearch("");
+      setErrorMsg(null);
+    }
+  }, [distributionToEdit, open, personas, platforms]);
 
   const toggleProduct = (pId: string) => {
     if (selectedProductIds.includes(pId)) {
@@ -510,6 +577,44 @@ export function DistributionFormModal({
             </div>
           </div>
 
+          {/* Duplicate Detection Warning Banner */}
+          {duplicates.length > 0 && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Peringatan Duplikasi Sebaran ({duplicates.length} terdeteksi)</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Produk berikut sudah pernah disebar di grup yang sama sebelumnya:
+              </p>
+              <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1">
+                {duplicates.map((dup, idx) => {
+                  const daysAgo = Math.floor(
+                    (Date.now() - new Date(dup.postedAt).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  );
+                  return (
+                    <div
+                      key={idx}
+                      className="p-1.5 rounded-md bg-card/60 border border-amber-500/20 text-[11px] text-foreground flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate">
+                        &bull; <strong className="font-semibold">{dup.productName}</strong> di{" "}
+                        <span className="font-medium text-primary">{dup.platformName}</span>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                        {daysAgo === 0 ? "Hari ini" : `${daysAgo} hari lalu`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-amber-600/90 dark:text-amber-400/90 italic pt-0.5">
+                💡 Anda tetap dapat melanjutkan dan menyimpan sebaran ini jika memang ingin sebar ulang.
+              </p>
+            </div>
+          )}
+
           {/* 4. Single Mode: Post URL & Status */}
           {(mode === "single" || isEditing) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -556,11 +661,17 @@ export function DistributionFormModal({
               </Label>
               <Input
                 id="campaignInput"
+                list="dist-campaign-suggestions"
                 placeholder="Contoh: Gajian Sale / 9.9 Super Deal"
                 value={campaign}
                 onChange={(e) => setCampaign(e.target.value)}
                 className="text-xs"
               />
+              <datalist id="dist-campaign-suggestions">
+                {campaignOptions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1.5">

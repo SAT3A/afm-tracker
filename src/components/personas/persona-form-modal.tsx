@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { createPersona, updatePersona, PersonaItem } from "@/app/actions/personas";
 import { Loader2, Users2, Sparkles, X, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface PersonaFormModalProps {
   open: boolean;
@@ -71,6 +72,23 @@ export function PersonaFormModal({
     personaToEdit?.platforms?.threads || ""
   );
 
+  // Synchronize form states when personaToEdit changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setName(personaToEdit?.name || "");
+      setDescription(personaToEdit?.description || "");
+      setAvatarUrl(personaToEdit?.avatarUrl || "");
+      setStatus(personaToEdit?.status || "active");
+      setNiches(personaToEdit?.niches || []);
+      setNicheInput("");
+      setFbAccount(personaToEdit?.platforms?.facebook || "");
+      setIgAccount(personaToEdit?.platforms?.instagram || "");
+      setTiktokAccount(personaToEdit?.platforms?.tiktok || "");
+      setThreadsAccount(personaToEdit?.platforms?.threads || "");
+      setErrorMsg(null);
+    }
+  }, [personaToEdit, open]);
+
   const addNiche = (nicheToAdd: string) => {
     const trimmed = nicheToAdd.trim().toLowerCase();
     if (trimmed && !niches.includes(trimmed)) {
@@ -114,6 +132,11 @@ export function PersonaFormModal({
 
         if (res.success) {
           onOpenChange(false);
+          if (!isEditing) {
+            toast.success("Data persona berhasil ditambahkan");
+          } else {
+            toast.success("Perubahan data berhasil disimpan");
+          }
           if (onSuccess) onSuccess();
         } else {
           setErrorMsg(res.message || "Gagal menyimpan persona.");
@@ -174,7 +197,8 @@ export function PersonaFormModal({
                 className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="active">Aktif (Bisa Buat Konten & Sebar)</option>
-                <option value="inactive">Nonaktif (Istirahat)</option>
+                <option value="on_hiatus">Nonaktif (On Hiatus)</option>
+                <option value="deactive">Deactive (Delete Account)</option>
               </select>
             </div>
           </div>
@@ -351,10 +375,7 @@ export function PersonaFormModal({
                   Menyimpan...
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {isEditing ? "Simpan Perubahan" : "Simpan Persona"}
-                </>
+                isEditing ? "Simpan Perubahan" : "Simpan Persona"
               )}
             </Button>
           </DialogFooter>

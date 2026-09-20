@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -23,7 +23,30 @@ import {
   ShieldAlert,
   ShieldCheck,
   Share2,
+  Send,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { PlatformFormModal, PlatformData } from "./platform-form-modal";
 import { PlatformDetailModal } from "./platform-detail-modal";
 import { deletePlatform } from "@/app/actions/platforms";
@@ -32,6 +55,8 @@ import { useRouter } from "next/navigation";
 export interface PlatformItem extends PlatformData {
   id: string;
   distributionsCount: number;
+  sharesCount?: number;
+  postsCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,13 +83,45 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformItem | null>(null);
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus platform "${name}"?`)) {
-      startTransition(async () => {
-        await deletePlatform(id);
-        router.refresh();
-      });
-    }
+  // Delete dialog state
+  const [platformToDelete, setPlatformToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const handleRequestDelete = (id: string, name: string) => {
+    setPlatformToDelete({ id, name });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!platformToDelete) return;
+    startTransition(async () => {
+      try {
+        const res = await deletePlatform(platformToDelete.id);
+        if (res.success) {
+          toast.error("Data platform berhasil dihapus");
+          setDeleteDialogOpen(false);
+          setPlatformToDelete(null);
+          router.refresh();
+        } else {
+          toast.error(res.message || "Gagal menghapus platform");
+        }
+      } catch (error) {
+        toast.error("Tidak dapat menghapus platform saat ini.");
+        console.error(error);
+      }
+    });
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSelectedType("all");
+    setSelectedCategory("all");
+    setSelectedApproval("all");
+    setSelectedStatus("all");
+    setCurrentPage(1);
   };
 
   // Filter platforms locally for instant interactive feedback
@@ -99,6 +156,70 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
       matchesApproval
     );
   });
+
+  // Pagination state & calculations (10 platforms per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Auto-reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedType, selectedCategory, selectedStatus, selectedApproval]);
+
+  const totalItems = filteredPlatforms.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedPlatforms = filteredPlatforms.slice(startIndex, endIndex);
+
+  const getPlatformStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+        );
+      case "pending_approval":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Pending Approval
+          </span>
+        );
+      case "restricted":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            Restricted
+          </span>
+        );
+      case "on_hiatus":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            On Hiatus
+          </span>
+        );
+      case "suspended":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            Suspended
+          </span>
+        );
+      case "inactive":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+            Non Active
+          </span>
+        );
+    }
+  };
 
   const getPlatformTypeBadge = (type: string) => {
     switch (type) {
@@ -135,20 +256,132 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
     }
   };
 
+  // Statistics calculation for KPI cards
+  const totalPlatforms = platforms.length;
+  const activePlatformsCount = platforms.filter(
+    (p) => p.status === "active"
+  ).length;
+  const pendingApprovalCount = platforms.filter(
+    (p) => p.status === "pending_approval"
+  ).length;
+  const totalDistributions = platforms.reduce(
+    (acc, p) => acc + p.distributionsCount,
+    0
+  );
+
   return (
     <div
-      className={`space-y-4 ${
+      className={`space-y-6 ${
         isPending ? "opacity-60 pointer-events-none transition-opacity" : ""
       }`}
     >
+      {/* Quick KPI Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Total Platform */}
+        <div
+          onClick={handleResetFilters}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-primary/50 ${
+            selectedStatus === "all"
+              ? "border-primary/40 ring-1 ring-primary/20"
+              : "border-border"
+          }`}
+          title="Klik untuk tampilkan semua platform"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Total Platform
+            </span>
+            <Globe className="w-4 h-4 text-primary" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-foreground">
+            {totalPlatforms}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Grup & Social Media Terdaftar
+          </p>
+        </div>
+
+        {/* 2. Platform Active */}
+        <div
+          onClick={() => {
+            setSelectedStatus((prev) =>
+              prev === "active" ? "all" : "active"
+            );
+          }}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-teal-500/50 ${
+            selectedStatus === "active"
+              ? "border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/[0.03]"
+              : "border-border"
+          }`}
+          title="Klik untuk filter platform dengan status Active"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Platform Aktif
+            </span>
+            <CheckCircle2 className="w-4 h-4 text-teal-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-teal-600 dark:text-teal-400">
+            {activePlatformsCount}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Status Active
+          </p>
+        </div>
+
+        {/* 3. Butuh Approval */}
+        <div
+          onClick={() => {
+            setSelectedStatus((prev) =>
+              prev === "pending_approval" ? "all" : "pending_approval"
+            );
+          }}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-amber-500/50 ${
+            selectedStatus === "pending_approval"
+              ? "border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/[0.03]"
+              : "border-border"
+          }`}
+          title="Klik untuk filter platform dengan status Pending Approval"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Butuh Approval
+            </span>
+            <ShieldAlert className="w-4 h-4 text-amber-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-amber-600 dark:text-amber-400">
+            {pendingApprovalCount}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Status Pending Approval
+          </p>
+        </div>
+
+        {/* 4. Publikasi Konten */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Publikasi Konten
+            </span>
+            <Share2 className="w-4 h-4 text-teal-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-teal-600 dark:text-teal-400">
+            {totalDistributions}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Total keseluruhan post dan distribusi link.
+          </p>
+        </div>
+      </div>
+
       {/* Top action toolbar: Search + Type Filter + Category Filter + Approval Filter + Add Button */}
       <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between">
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
           {/* Search bar */}
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Cari nama grup, catatan, link..."
+              placeholder="Cari nama grup .. "
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-xs"
@@ -198,12 +431,29 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full sm:w-28 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
+            className="w-full sm:w-48 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Status</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="active">Active</option>
+            <option value="pending_approval">Pending Approval</option>
+            <option value="restricted">Restricted / Shadowbanned</option>
+            <option value="on_hiatus">On Hiatus</option>
+            <option value="inactive">Non Active</option>
+            <option value="suspended">Suspended / Banned</option>
           </select>
+
+          {/* Reset Filter Button */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={handleResetFilters}
+            className="h-9 w-9 border-input hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+            title="Reset filter & datatable"
+            aria-label="Reset filter & datatable"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Button>
         </div>
 
         {/* Add Platform button */}
@@ -234,16 +484,16 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                 <TableHead className="w-[140px] text-xs font-semibold text-muted-foreground">
                   Moderasi Post
                 </TableHead>
-                <TableHead className="w-[100px] text-xs font-semibold text-muted-foreground text-center">
-                  Sebaran
+                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground text-center">
+                  Sebaran &nbsp; / &nbsp; Posting
                 </TableHead>
                 <TableHead className="w-[90px] text-xs font-semibold text-muted-foreground text-center">
                   Status
                 </TableHead>
-                <TableHead className="w-[70px] text-xs font-semibold text-muted-foreground text-center">
+                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground text-center">
                   Link
                 </TableHead>
-                <TableHead className="w-[120px] text-xs font-semibold text-muted-foreground text-right">
+                <TableHead className="w-[60px] text-xs font-semibold text-muted-foreground text-right">
                   Aksi
                 </TableHead>
               </TableRow>
@@ -253,7 +503,7 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="h-44 text-center text-muted-foreground"
+                    className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Globe className="w-8 h-8 text-muted-foreground/40" />
@@ -282,39 +532,29 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPlatforms.map((item) => (
+                paginatedPlatforms.map((item) => (
                   <TableRow
                     key={item.id}
                     className="hover:bg-muted/40 group"
                   >
                     {/* Platform Name & Category */}
                     <TableCell className="py-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlatform(item);
-                              setIsDetailOpen(true);
-                            }}
-                            className="font-bold text-xs text-foreground hover:text-primary text-left transition-colors"
-                          >
-                            {item.name}
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] font-normal text-muted-foreground"
-                          >
+                      <div className="space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlatform(item);
+                            setIsDetailOpen(true);
+                          }}
+                          className="font-bold text-xs text-foreground hover:text-primary text-left transition-colors block"
+                        >
+                          {item.name}
+                        </button>
+                        {item.category && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1">
                             {item.category}
-                          </Badge>
-                          {item.notes && (
-                            <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
-                              {item.notes}
-                            </span>
-                          )}
-                        </div>
+                          </p>
+                        )}
                       </div>
                     </TableCell>
 
@@ -338,25 +578,30 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                       )}
                     </TableCell>
 
-                    {/* Distributions count */}
+                    {/* Sebaran & Posting count with 2 icons */}
                     <TableCell className="py-3 text-center">
-                      <div className="inline-flex items-center gap-1 text-xs font-semibold text-foreground">
-                        <Share2 className="w-3.5 h-3.5 text-teal-500" />
-                        {item.distributionsCount}
+                      <div className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-foreground">
+                        <div
+                          className="inline-flex items-center gap-1"
+                          title="Sebaran link affiliate"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-teal-500" />
+                          <span>{item.sharesCount ?? 0}</span>
+                        </div>
+                        <span className="text-muted-foreground/30">/</span>
+                        <div
+                          className="inline-flex items-center gap-1"
+                          title="Posting konten"
+                        >
+                          <Send className="w-3.5 h-3.5 text-blue-500" />
+                          <span>{item.postsCount ?? 0}</span>
+                        </div>
                       </div>
                     </TableCell>
 
                     {/* Status badge */}
                     <TableCell className="py-3 text-center">
-                      {item.status === "active" ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                          Aktif
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground">
-                          Nonaktif
-                        </span>
-                      )}
+                      {getPlatformStatusBadge(item.status)}
                     </TableCell>
 
                     {/* Direct external link */}
@@ -366,10 +611,11 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                           href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
-                          title="Buka URL Platform/Grup"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-colors shadow-2xs"
+                          title="Buka URL Platform/Grup di tab baru"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>visit link</span>
+                          <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
                         <span className="text-[11px] text-muted-foreground/50">
@@ -378,43 +624,45 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
                       )}
                     </TableCell>
 
-                    {/* Actions: View, Edit, Delete */}
-                    <TableCell className="py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedPlatform(item);
-                            setIsDetailOpen(true);
-                          }}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setPlatformToEdit(item);
-                            setIsFormOpen(true);
-                          }}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600"
-                          title="Edit Platform"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(item.id, item.name)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                          title="Hapus Platform"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                    {/* Actions: 3-dots Dropdown Menu */}
+                    <TableCell
+                      className="py-3 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="p-1.5 rounded-lg hover:bg-muted cursor-pointer outline-none">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedPlatform(item);
+                              setIsDetailOpen(true);
+                            }}
+                            className="cursor-pointer gap-2 text-xs"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Detail
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setPlatformToEdit(item);
+                              setIsFormOpen(true);
+                            }}
+                            className="cursor-pointer gap-2 text-xs"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleRequestDelete(item.id, item.name)}
+                            className="cursor-pointer gap-2 text-xs text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -423,19 +671,84 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           </Table>
         </div>
 
-        {/* Table Footer / Summary */}
-        <div className="px-4 py-2.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground flex items-center justify-between">
-          <span>
-            Menampilkan {filteredPlatforms.length} dari {platforms.length} platform
-          </span>
-          <span className="text-muted-foreground">
-            Klik nama atau ikon mata untuk melihat detail lengkap & aturan grup
-          </span>
+        {/* Table Footer / Pagination */}
+        <div className="px-4 py-3 border-t border-border bg-muted/30 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div>
+            Menampilkan <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> -{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> dari{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> platform
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={safeCurrentPage <= 1}
+                className="h-8 w-8 p-0"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                ) {
+                  const isActive = pageNum === safeCurrentPage;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`h-8 min-w-8 px-2 text-xs font-semibold ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+
+                if (
+                  (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
+                  (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
+                ) {
+                  return (
+                    <span key={pageNum} className="px-1 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                }
+
+                return null;
+              })}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={safeCurrentPage >= totalPages}
+                className="h-8 w-8 p-0"
+                title="Halaman Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Form Modal (Create / Edit) */}
       <PlatformFormModal
+        key={platformToEdit?.id || "new-platform"}
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         platformToEdit={platformToEdit}
@@ -452,6 +765,42 @@ export function PlatformTable({ platforms, categories }: PlatformTableProps) {
           setIsFormOpen(true);
         }}
       />
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="space-y-3 text-center sm:text-left">
+            <AlertDialogTitle className="text-lg font-bold text-destructive">
+              Hapus Data Platform?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-1 text-xs text-muted-foreground block">
+              <span className="block">Apakah Anda yakin ingin menghapus platform</span>
+              <span className="block p-3 rounded-lg bg-muted/60 border border-border text-center font-bold text-sm text-foreground">
+                {platformToDelete?.name}
+              </span>
+              <span className="block text-muted-foreground leading-relaxed">
+                Tindakan ini akan menghapus platform secara permanen dan tidak dapat dibatalkan.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-2 sm:justify-end gap-2">
+            <AlertDialogCancel
+              disabled={isPending}
+              onClick={() => setDeleteDialogOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending}
+              onClick={handleConfirmDelete}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs"
+            >
+              Ya, Hapus Platform
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

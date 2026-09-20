@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createPlatform, updatePlatform } from "@/app/actions/platforms";
-import { Loader2, Globe, ShieldAlert, Sparkles } from "lucide-react";
+import { Loader2, Globe, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
 
 export type PlatformData = {
   id?: string;
@@ -35,14 +36,13 @@ interface PlatformFormModalProps {
 }
 
 const CATEGORY_SUGGESTIONS = [
-  "Sebar link shopee affiliate",
-  "Komunitas Belanja & Diskon",
-  "Fashion & OOTD",
-  "Skincare & Kecantikan",
-  "Racun Belanja Shopee",
-  "Elektronik & Setup Desk",
-  "Lifestyle & Gym",
-  "Home & Living / Dekorasi",
+  "sebar link shopee affiliate",
+  "posting di grup facebook",
+  "posting konten di thread",
+  "posting konten di fanspage",
+  "posting konten di reals facebook",
+  "posting konten di instagram",
+  "posting konten di tiktok",
 ];
 
 const PLATFORM_TYPES = [
@@ -70,7 +70,7 @@ export function PlatformFormModal({
   );
   const [url, setUrl] = useState(platformToEdit?.url || "");
   const [category, setCategory] = useState(
-    platformToEdit?.category || "Sebar link shopee affiliate"
+    platformToEdit?.category || "sebar link shopee affiliate"
   );
   const [requiresApproval, setRequiresApproval] = useState(
     platformToEdit?.requiresApproval ?? false
@@ -79,6 +79,20 @@ export function PlatformFormModal({
     platformToEdit?.status || "active"
   );
   const [notes, setNotes] = useState(platformToEdit?.notes || "");
+
+  // Synchronize form states when platformToEdit changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setName(platformToEdit?.name || "");
+      setPlatformType(platformToEdit?.platformType || "facebook");
+      setUrl(platformToEdit?.url || "");
+      setCategory(platformToEdit?.category || "sebar link shopee affiliate");
+      setRequiresApproval(platformToEdit?.requiresApproval ?? false);
+      setStatus(platformToEdit?.status || "active");
+      setNotes(platformToEdit?.notes || "");
+      setErrorMsg(null);
+    }
+  }, [platformToEdit, open]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -89,7 +103,7 @@ export function PlatformFormModal({
     formData.append("platformType", platformType);
     formData.append("url", url);
     formData.append("category", category);
-    formData.append("requiresApproval", requiresApproval ? "true" : "false");
+    formData.append("requiresApproval", platformType === "facebook" && requiresApproval ? "true" : "false");
     formData.append("status", status);
     formData.append("notes", notes);
 
@@ -104,6 +118,17 @@ export function PlatformFormModal({
 
         if (res.success) {
           onOpenChange(false);
+          if (!isEditing) {
+            toast.success("Platform berhasil ditambahkan");
+          } else {
+            if (status === "active") {
+              toast.success("Data berhasil diperbarui");
+            } else if (status === "inactive") {
+              toast.error("Data berhasil diperbarui");
+            } else {
+              toast.warning("Data berhasil diperbarui");
+            }
+          }
           if (onSuccess) onSuccess();
         } else {
           setErrorMsg(res.message || "Terjadi kesalahan.");
@@ -186,8 +211,12 @@ export function PlatformFormModal({
                 }
                 className="w-full h-9 px-3 text-xs rounded-md border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
-                <option value="active">Aktif (Bisa Disebar)</option>
-                <option value="inactive">Nonaktif (Jangan Disebar)</option>
+                <option value="active">Active (Siap Disebar)</option>
+                <option value="pending_approval">Pending Approval</option>
+                <option value="restricted">Restricted / Shadowbanned</option>
+                <option value="on_hiatus">On Hiatus</option>
+                <option value="inactive">Non Active</option>
+                <option value="suspended">Suspended / Banned</option>
               </select>
             </div>
           </div>
@@ -241,30 +270,32 @@ export function PlatformFormModal({
             </div>
           </div>
 
-          {/* Requires Approval Setting */}
-          <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-500" />
-                <Label
-                  htmlFor="requiresApprovalToggle"
-                  className="text-xs font-semibold cursor-pointer"
-                >
-                  Butuh Persetujuan (Approval) Admin Grup?
-                </Label>
+          {/* Requires Approval Setting - only for Facebook */}
+          {platformType === "facebook" && (
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  <Label
+                    htmlFor="requiresApprovalToggle"
+                    className="text-xs font-semibold cursor-pointer"
+                  >
+                    Butuh Persetujuan (Approval) Admin Grup?
+                  </Label>
+                </div>
+                <input
+                  type="checkbox"
+                  id="requiresApprovalToggle"
+                  checked={requiresApproval}
+                  onChange={(e) => setRequiresApproval(e.target.checked)}
+                  className="w-4 h-4 rounded accent-primary border-input cursor-pointer"
+                />
               </div>
-              <input
-                type="checkbox"
-                id="requiresApprovalToggle"
-                checked={requiresApproval}
-                onChange={(e) => setRequiresApproval(e.target.checked)}
-                className="w-4 h-4 rounded accent-primary border-input cursor-pointer"
-              />
+              <p className="text-[11px] text-muted-foreground pl-6">
+                Centang jika setiap postingan atau komentar baru di grup ini harus disetujui moderator terlebih dahulu sebelum muncul ke publik.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground pl-6">
-              Centang jika setiap postingan atau komentar baru di grup ini harus disetujui moderator terlebih dahulu sebelum muncul ke publik.
-            </p>
-          </div>
+          )}
 
           {/* Catatan / Aturan Grup */}
           <div className="space-y-1.5">
@@ -295,18 +326,17 @@ export function PlatformFormModal({
               type="submit"
               size="sm"
               disabled={isPending}
-              className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
                   Menyimpan...
                 </>
+              ) : isEditing ? (
+                "Simpan Perubahan"
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {isEditing ? "Simpan Perubahan" : "Simpan Platform"}
-                </>
+                "Simpan Platform"
               )}
             </Button>
           </DialogFooter>

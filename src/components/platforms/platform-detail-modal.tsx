@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { updatePlatformStatus } from "@/app/actions/platforms";
 import {
   Globe,
   ExternalLink,
@@ -20,6 +23,9 @@ import {
   Calendar,
   FileText,
   Clock,
+  Ban,
+  CheckCircle2,
+  Edit2,
 } from "lucide-react";
 import { PlatformItem } from "./platform-table";
 
@@ -30,15 +36,56 @@ interface PlatformDetailModalProps {
   onEdit?: (platform: PlatformItem) => void;
 }
 
+function formatDateTime(dateStr?: Date | string | null) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "-";
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year}, ${hours}:${minutes}`;
+}
+
 export function PlatformDetailModal({
   open,
   onOpenChange,
   platform,
   onEdit,
 }: PlatformDetailModalProps) {
+  const router = useRouter();
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [isUpdatingStatus, startTransition] = useTransition();
+  const [currentStatus, setCurrentStatus] = useState(platform?.status || "active");
+
+  useEffect(() => {
+    if (platform) {
+      setCurrentStatus(platform.status);
+    }
+  }, [platform]);
 
   if (!platform) return null;
+
+  const handleStatusToggle = (newStatus: string) => {
+    if (!platform.id) return;
+    startTransition(async () => {
+      const res = await updatePlatformStatus(platform.id, newStatus);
+      if (res.success) {
+        setCurrentStatus(newStatus);
+        if (newStatus === "active") {
+          toast.success("Platform berhasil diaktifkan");
+        } else if (newStatus === "inactive") {
+          toast.error("Platform dinonaktifkan");
+        } else {
+          toast.warning(`Status platform diubah ke ${newStatus}`);
+        }
+        router.refresh();
+      } else {
+        toast.error(res.message || "Gagal memperbarui status");
+      }
+    });
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -81,27 +128,61 @@ export function PlatformDetailModal({
     }
   };
 
+  const getPlatformStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+        );
+      case "pending_approval":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Pending Approval
+          </span>
+        );
+      case "restricted":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            Restricted
+          </span>
+        );
+      case "on_hiatus":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            On Hiatus
+          </span>
+        );
+      case "suspended":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            Suspended
+          </span>
+        );
+      case "inactive":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground border border-border">
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+            Non Active
+          </span>
+        );
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             {getPlatformTypeBadge(platform.platformType)}
-            <Badge
-              variant="outline"
-              className="text-[11px] font-normal text-muted-foreground"
-            >
-              {platform.category}
-            </Badge>
-            {platform.status === "active" ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                Aktif
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground">
-                Nonaktif
-              </span>
-            )}
+            {getPlatformStatusBadge(currentStatus)}
           </div>
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
             {platform.name}
@@ -135,13 +216,13 @@ export function PlatformDetailModal({
             <div className="p-3.5 rounded-xl border border-border bg-muted/30">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <Share2 className="w-4 h-4 text-teal-500" />
-                Total Sebaran Link
+                Total Sebaran & Posting
               </div>
               <p className="text-sm font-bold text-foreground">
                 {platform.distributionsCount} Distribusi
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Riwayat post & comment
+                {platform.sharesCount ?? 0} Sebar Link · {platform.postsCount ?? 0} Posting
               </p>
             </div>
           </div>
@@ -211,37 +292,65 @@ export function PlatformDetailModal({
           <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-3">
             <div className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              Didaftarkan: {new Date(platform.createdAt).toLocaleDateString("id-ID")}
+              Didaftarkan: {formatDateTime(platform.createdAt)}
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
-              Diupdate: {new Date(platform.updatedAt).toLocaleDateString("id-ID")}
+              Diupdate: {formatDateTime(platform.updatedAt)}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
-            Tutup
-          </Button>
-          {onEdit && (
+        <div className="pt-3 border-t border-border flex items-center justify-between">
+          {/* Tombol status di sebelah kiri */}
+          {currentStatus === "inactive" ? (
             <Button
-              type="button"
+              variant="outline"
               size="sm"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(platform);
-              }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              disabled={isUpdatingStatus}
+              onClick={() => handleStatusToggle("active")}
+              className="text-xs text-teal-600 dark:text-teal-400 border-teal-300 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/50 gap-1.5"
             >
-              Edit Platform
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Aktifkan Platform
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUpdatingStatus}
+              onClick={() => handleStatusToggle("inactive")}
+              className="text-xs text-red-600 dark:text-red-400 border-red-300 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/50 gap-1.5"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Nonaktifkan Platform
             </Button>
           )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Tutup
+            </Button>
+            {onEdit && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit({ ...platform, status: currentStatus });
+                }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Edit Platform
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

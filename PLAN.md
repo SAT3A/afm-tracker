@@ -583,22 +583,22 @@ afm_apps/
 
 > Fokus: tracking konten video + engagement
 
-- [ ] CRUD Content (video tracking)
-- [ ] Content Metrics input (via modal)
-- [ ] Distribution Engagement input (via modal)
-- [ ] Duplicate Detection
-- [ ] Campaign / Tag management
-- [ ] Dashboard enhanced (top produk, top grup, persona comparison)
+- [x] CRUD Content (video tracking)
+- [x] Content Metrics input (via modal)
+- [x] Distribution Engagement input (via modal)
+- [x] Duplicate Detection
+- [x] Campaign / Tag management
+- [x] Dashboard enhanced (top produk, top grup, persona comparison)
 
 ### Phase 3 — Analytics & Schedule
 
 > Fokus: analisa dan planning
 
-- [ ] Best Posting Time page (research-based data + heatmap)
-- [ ] Posting Schedule (calendar view)
-- [ ] Browser Push Notification reminder
-- [ ] Recurring schedule
-- [ ] Per-campaign reporting
+- [x] Best Posting Time page (research-based data + heatmap)
+- [x] Posting Schedule (calendar view)
+- [x] Browser Push Notification reminder
+- [x] Recurring schedule
+- [x] Per-campaign reporting
 
 ### Phase 4 — Enhancement (Nice-to-have)
 

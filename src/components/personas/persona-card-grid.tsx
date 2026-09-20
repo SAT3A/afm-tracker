@@ -1,23 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Search,
   Plus,
-  Eye,
-  Edit2,
-  Trash2,
   Users2,
   Share2,
   Video,
   Sparkles,
+  CheckCircle2,
+  PauseCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { PersonaFormModal } from "./persona-form-modal";
 import { PersonaDetailModal } from "./persona-detail-modal";
-import { deletePersona, PersonaItem } from "@/app/actions/personas";
+import { PersonaItem } from "@/app/actions/personas";
 import { useRouter } from "next/navigation";
 
 interface PersonaCardGridProps {
@@ -44,13 +45,26 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
     new Set(personas.flatMap((p) => p.niches))
   ).sort();
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus persona "${name}"?`)) {
-      startTransition(async () => {
-        await deletePersona(id);
-        router.refresh();
-      });
-    }
+  // KPI Calculations
+  const totalPersonas = personas.length;
+  const activePersonas = personas.filter((p) => p.status === "active").length;
+  const nonActivePersonas = personas.filter(
+    (p) =>
+      p.status === "on_hiatus" ||
+      p.status === "deactive" ||
+      p.status === "inactive"
+  ).length;
+  const totalContents = personas.reduce((acc, p) => acc + p.contentsCount, 0);
+  const totalDistributions = personas.reduce(
+    (acc, p) => acc + p.distributionsCount,
+    0
+  );
+  const totalPublications = totalContents + totalDistributions;
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSelectedStatus("all");
+    setSelectedNiche("all");
   };
 
   const filteredPersonas = personas.filter((p) => {
@@ -61,8 +75,17 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
         p.description.toLowerCase().includes(search.toLowerCase())) ||
       p.niches.some((n) => n.toLowerCase().includes(search.toLowerCase()));
 
-    const matchesStatus =
-      selectedStatus === "all" || p.status === selectedStatus;
+    let matchesStatus = true;
+    if (selectedStatus === "all") {
+      matchesStatus = true;
+    } else if (selectedStatus === "non_active") {
+      matchesStatus =
+        p.status === "on_hiatus" ||
+        p.status === "deactive" ||
+        p.status === "inactive";
+    } else {
+      matchesStatus = p.status === selectedStatus;
+    }
 
     const matchesNiche =
       selectedNiche === "all" || p.niches.includes(selectedNiche);
@@ -70,12 +93,125 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
     return matchesSearch && matchesStatus && matchesNiche;
   });
 
+  // Pagination state (max 6 personas per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
+  // Auto-reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStatus, selectedNiche]);
+
+  const totalItems = filteredPersonas.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedPersonas = filteredPersonas.slice(startIndex, endIndex);
+
   return (
     <div
       className={`space-y-6 ${
         isPending ? "opacity-60 pointer-events-none transition-opacity" : ""
       }`}
     >
+      {/* Quick KPI Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Total Persona */}
+        <div
+          onClick={handleResetFilters}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-primary/50 ${
+            selectedStatus === "all"
+              ? "border-primary/40 ring-1 ring-primary/20"
+              : "border-border"
+          }`}
+          title="Klik untuk tampilkan semua persona"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Total Persona
+            </span>
+            <Users2 className="w-4 h-4 text-primary" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-foreground">
+            {totalPersonas}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Persona terdaftar
+          </p>
+        </div>
+
+        {/* 2. Persona Aktif */}
+        <div
+          onClick={() => {
+            setSelectedStatus((prev) => (prev === "active" ? "all" : "active"));
+          }}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-teal-500/50 ${
+            selectedStatus === "active"
+              ? "border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/[0.03]"
+              : "border-border"
+          }`}
+          title="Klik untuk filter persona aktif"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Persona Aktif
+            </span>
+            <CheckCircle2 className="w-4 h-4 text-teal-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-teal-600 dark:text-teal-400">
+            {activePersonas}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Siap memproduksi konten
+          </p>
+        </div>
+
+        {/* 3. Persona On hiatus / Non active */}
+        <div
+          onClick={() => {
+            setSelectedStatus((prev) =>
+              prev === "non_active" ? "all" : "non_active"
+            );
+          }}
+          className={`p-4 rounded-xl border bg-card shadow-xs cursor-pointer transition-all hover:border-purple-500/50 ${
+            selectedStatus === "non_active"
+              ? "border-purple-500 ring-2 ring-purple-500/30 bg-purple-500/[0.03]"
+              : "border-border"
+          }`}
+          title="Klik untuk filter persona non aktif"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Persona On hiatus / Non active
+            </span>
+            <PauseCircle className="w-4 h-4 text-purple-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-purple-600 dark:text-purple-400">
+            {nonActivePersonas}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Persona yang non aktif
+          </p>
+        </div>
+
+        {/* 4. Publikasi Konten */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Publikasi Konten
+            </span>
+            <Share2 className="w-4 h-4 text-teal-500" />
+          </div>
+          <p className="text-2xl font-extrabold mt-2 text-teal-600 dark:text-teal-400">
+            {totalPublications}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Total keseluruhan post dan distribusi link.
+          </p>
+        </div>
+      </div>
+
       {/* Action Toolbar: Search + Filters + Add Button */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
@@ -108,11 +244,13 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full sm:w-32 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
+            className="w-full sm:w-48 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
           >
             <option value="all">Semua Status</option>
             <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="on_hiatus">Nonaktif (On Hiatus)</option>
+            <option value="deactive">Deactive (Delete Account)</option>
+            <option value="non_active">Nonaktif (Semua)</option>
           </select>
         </div>
 
@@ -159,12 +297,17 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredPersonas.map((persona) => (
+          {paginatedPersonas.map((persona) => (
             <div
               key={persona.id}
-              className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+              onClick={() => {
+                setSelectedPersona(persona);
+                setIsDetailOpen(true);
+              }}
+              className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between group cursor-pointer"
+              title="Klik untuk melihat detail persona"
             >
-              {/* Card Header: Avatar, Name, Status & Action Menu */}
+              {/* Card Header: Avatar, Name, Status */}
               <div>
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
@@ -189,6 +332,14 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                             Aktif
                           </span>
+                        ) : persona.status === "on_hiatus" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            On Hiatus
+                          </span>
+                        ) : persona.status === "deactive" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                            Deactive
+                          </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground">
                             Nonaktif
@@ -196,43 +347,6 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
                         )}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedPersona(persona);
-                        setIsDetailOpen(true);
-                      }}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                      title="Lihat Profil Lengkap"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setPersonaToEdit(persona);
-                        setIsFormOpen(true);
-                      }}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600"
-                      title="Edit Profil"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(persona.id, persona.name)}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      title="Hapus Persona"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
                   </div>
                 </div>
 
@@ -290,8 +404,85 @@ export function PersonaCardGrid({ personas }: PersonaCardGridProps) {
         </div>
       )}
 
+      {/* Pagination Controls */}
+      {filteredPersonas.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+          <p className="text-xs text-muted-foreground order-2 sm:order-1">
+            Menampilkan <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> -{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> dari{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> persona
+          </p>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 order-1 sm:order-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={safeCurrentPage <= 1}
+                className="h-8 w-8 p-0"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                ) {
+                  const isActive = pageNum === safeCurrentPage;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`h-8 min-w-8 px-2 text-xs font-semibold ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+
+                if (
+                  (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
+                  (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
+                ) {
+                  return (
+                    <span key={pageNum} className="px-1 text-muted-foreground text-xs">
+                      ...
+                    </span>
+                  );
+                }
+
+                return null;
+              })}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={safeCurrentPage >= totalPages}
+                className="h-8 w-8 p-0"
+                title="Halaman Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Form Modal (Create / Edit) */}
       <PersonaFormModal
+        key={personaToEdit?.id || (isFormOpen ? "new" : "closed")}
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         personaToEdit={personaToEdit}

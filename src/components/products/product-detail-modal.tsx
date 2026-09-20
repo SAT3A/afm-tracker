@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,8 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { updateProductStatus } from "@/app/actions/products";
 import {
   Copy,
   Check,
@@ -21,6 +24,9 @@ import {
   Video,
   Tag,
   Calendar,
+  Clock,
+  Ban,
+  CheckCircle2,
 } from "lucide-react";
 import { ProductData } from "./product-form-modal";
 
@@ -32,10 +38,23 @@ interface ProductDetailModalProps {
         distributionsCount?: number;
         contentsCount?: number;
         createdAt?: Date | string;
+        updatedAt?: Date | string;
       })
     | null;
   onEdit: (product: ProductData) => void;
   onDelete: (id: string) => void;
+}
+
+function formatDateTime(dateStr?: Date | string | null) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "-";
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year}, ${hours}:${minutes}`;
 }
 
 export function ProductDetailModal({
@@ -45,7 +64,16 @@ export function ProductDetailModal({
   onEdit,
   onDelete,
 }: ProductDetailModalProps) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [isUpdatingStatus, startTransition] = useTransition();
+  const [currentStatus, setCurrentStatus] = useState(product?.status || "active");
+
+  useEffect(() => {
+    if (product) {
+      setCurrentStatus(product.status);
+    }
+  }, [product]);
 
   if (!product) return null;
 
@@ -56,11 +84,33 @@ export function ProductDetailModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleStatusToggle = (newStatus: "active" | "hold" | "non_active") => {
+    if (!product.id) return;
+    startTransition(async () => {
+      const res = await updateProductStatus(product.id!, newStatus);
+      if (res.success) {
+        setCurrentStatus(newStatus);
+        if (newStatus === "non_active") {
+          toast.error("Produk dinonaktifkan");
+        } else if (newStatus === "hold") {
+          toast.warning(`Produk ${product.productName} berhasil di HOLD`);
+        } else {
+          toast.success("Produk diaktifkan");
+        }
+        router.refresh();
+      } else {
+        toast.error(res.message || "Gagal memperbarui status");
+      }
+    });
+  };
+
   const statusBadge = {
-    active: { label: "Aktif", class: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
-    paused: { label: "Ditunda", class: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-    expired: { label: "Expired", class: "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-900" },
-  }[product.status] || { label: product.status, class: "bg-muted text-muted-foreground" };
+    active: { label: "Active", dot: "bg-teal-500", class: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
+    hold: { label: "Hold", dot: "bg-amber-500", class: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+    paused: { label: "Hold", dot: "bg-amber-500", class: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+    non_active: { label: "Non Active", dot: "bg-red-500", class: "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-900" },
+    expired: { label: "Non Active", dot: "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-900" },
+  }[currentStatus] || { label: currentStatus, dot: "bg-muted-foreground", class: "bg-muted text-muted-foreground" };
 
   const estimatedCommission = (product.price * product.commissionRate) / 100;
 
@@ -68,11 +118,9 @@ export function ProductDetailModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-3 border-b border-border">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-              {product.brand} &bull; {product.category}
-            </span>
-            <Badge variant="outline" className={`text-xs ${statusBadge.class}`}>
+          <div className="flex items-center">
+            <Badge variant="outline" className={`text-xs font-semibold gap-1.5 ${statusBadge.class}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot} inline-block`} />
               {statusBadge.label}
             </Badge>
           </div>
@@ -236,24 +284,52 @@ export function ProductDetailModal({
               </p>
             </div>
           )}
+
+          {/* Timestamps */}
+          {(product.createdAt || product.updatedAt) && (
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-3">
+              {product.createdAt && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Didaftarkan: {formatDateTime(product.createdAt)}
+                </div>
+              )}
+              {product.updatedAt && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  Diupdate: {formatDateTime(product.updatedAt)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
         <div className="pt-3 border-t border-border flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (product.id) {
-                onOpenChange(false);
-                onDelete(product.id);
-              }
-            }}
-            className="text-xs text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-            Hapus Produk
-          </Button>
+          {/* Tombol status di sebelah kiri menggantikan tombol Hapus Produk */}
+          {currentStatus === "non_active" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUpdatingStatus}
+              onClick={() => handleStatusToggle("active")}
+              className="text-xs text-teal-600 dark:text-teal-400 border-teal-300 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/50 gap-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Aktifkan Produk
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUpdatingStatus}
+              onClick={() => handleStatusToggle("non_active")}
+              className="text-xs text-red-600 dark:text-red-400 border-red-300 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/50 gap-1.5"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Nonaktifkan Produk
+            </Button>
+          )}
 
           <div className="flex items-center gap-2">
             <Button
@@ -268,7 +344,7 @@ export function ProductDetailModal({
               size="sm"
               onClick={() => {
                 onOpenChange(false);
-                onEdit(product);
+                onEdit({ ...product, status: currentStatus });
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5"
             >

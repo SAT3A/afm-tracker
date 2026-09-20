@@ -24,11 +24,22 @@ import {
   Clock,
   Edit2,
   ShieldAlert,
+  TrendingUp,
+  Eye,
+  Heart,
+  MousePointerClick,
+  ShoppingBag,
+  Plus,
+  Trash2,
+  Loader2,
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { DistributionItemData } from "./distribution-table";
 import {
   updateDistributionStatus,
   updateDistributionPostUrl,
+  addDistributionEngagement,
+  deleteDistributionEngagement,
 } from "@/app/actions/distributions";
 import { useRouter } from "next/navigation";
 
@@ -54,6 +65,15 @@ export function DistributionDetailModal({
   // Quick edit Post URL state
   const [isEditingUrl, setIsEditingUrl] = useState(false);
   const [editUrlValue, setEditUrlValue] = useState("");
+
+  // Engagement state
+  const [showAddEngagement, setShowAddEngagement] = useState(false);
+  const [engLikes, setEngLikes] = useState("");
+  const [engViews, setEngViews] = useState("");
+  const [engShares, setEngShares] = useState("");
+  const [engClicks, setEngClicks] = useState("");
+  const [engOrders, setEngOrders] = useState("");
+  const [engError, setEngError] = useState<string | null>(null);
 
   if (!distribution) return null;
 
@@ -86,6 +106,55 @@ export function DistributionDetailModal({
       router.refresh();
     });
   };
+
+  const handleAddEngagementSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEngError(null);
+
+    const formData = new FormData();
+    formData.append("likesCount", engLikes || "0");
+    formData.append("viewsCount", engViews || "0");
+    formData.append("sharesCount", engShares || "0");
+    formData.append("clicksCount", engClicks || "0");
+    if (engOrders) formData.append("ordersCount", engOrders);
+    formData.append("capturedAt", new Date().toISOString());
+
+    startTransition(async () => {
+      const res = await addDistributionEngagement(distribution.id, {}, formData);
+      if (res.success) {
+        setShowAddEngagement(false);
+        setEngLikes("");
+        setEngViews("");
+        setEngShares("");
+        setEngClicks("");
+        setEngOrders("");
+        router.refresh();
+      } else {
+        setEngError(res.message || "Gagal menyimpan engagement.");
+      }
+    });
+  };
+
+  const handleDeleteEngagement = (engId: string) => {
+    if (!confirm("Hapus catatan engagement ini?")) return;
+    startTransition(async () => {
+      await deleteDistributionEngagement(engId);
+      router.refresh();
+    });
+  };
+
+  const avgCommission =
+    distribution.items.length > 0
+      ? distribution.items.reduce(
+          (sum, item) =>
+            sum +
+            (item.product.price * item.product.commissionRate) / 100,
+          0
+        ) / distribution.items.length
+      : 0;
+
+  const latestEng = distribution.latestEngagement;
+  const estimatedEarnings = (latestEng?.ordersCount || 0) * avgCommission;
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -314,6 +383,240 @@ export function DistributionDetailModal({
               <p className="text-xs text-muted-foreground italic">
                 Belum ada URL postingan. Anda dapat menyimpannya nanti setelah posting di grup.
               </p>
+            )}
+          </div>
+
+          {/* Engagement & Metrics Section */}
+          <div className="p-3.5 rounded-xl border border-border bg-muted/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                Metrik Engagement & Konversi Sebaran
+              </h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAddEngagement(!showAddEngagement)}
+                className="h-7 text-xs gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {showAddEngagement ? "Tutup Form" : "Input Metrik Baru"}
+              </Button>
+            </div>
+
+            {/* KPI Counter Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+              <div className="p-2 rounded-lg bg-card border border-border">
+                <div className="flex items-center justify-center text-muted-foreground mb-1">
+                  <Eye className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  {(latestEng?.viewsCount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <div className="text-[10px] text-muted-foreground">Views</div>
+              </div>
+
+              <div className="p-2 rounded-lg bg-card border border-border">
+                <div className="flex items-center justify-center text-rose-500 mb-1">
+                  <Heart className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  {(latestEng?.likesCount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <div className="text-[10px] text-muted-foreground">Likes</div>
+              </div>
+
+              <div className="p-2 rounded-lg bg-card border border-border">
+                <div className="flex items-center justify-center text-teal-500 mb-1">
+                  <Share2 className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  {(latestEng?.sharesCount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <div className="text-[10px] text-muted-foreground">Shares</div>
+              </div>
+
+              <div className="p-2 rounded-lg bg-card border border-border">
+                <div className="flex items-center justify-center text-primary mb-1">
+                  <MousePointerClick className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  {(latestEng?.clicksCount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <div className="text-[10px] text-muted-foreground">Clicks</div>
+              </div>
+
+              <div className="p-2 rounded-lg bg-card border border-border col-span-2 sm:col-span-1">
+                <div className="flex items-center justify-center text-emerald-500 mb-1">
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {latestEng?.ordersCount ?? 0} Orders
+                </div>
+                <div className="text-[10px] text-muted-foreground">Konversi</div>
+              </div>
+            </div>
+
+            {/* Estimated Earnings Card */}
+            {estimatedEarnings > 0 && (
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
+                <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                  Estimasi Komisi dari Sebaran Ini:
+                </span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-300">
+                  Rp {Math.round(estimatedEarnings).toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
+
+            {/* Add Engagement Form */}
+            {showAddEngagement && (
+              <form
+                onSubmit={handleAddEngagementSubmit}
+                className="p-3 rounded-lg border border-border bg-card space-y-3 mt-2"
+              >
+                <div className="text-xs font-bold text-foreground">
+                  Catat Metrik Baru (Dari Dashboard Shopee Affiliate / Grup)
+                </div>
+
+                {engError && (
+                  <div className="p-2 text-xs bg-destructive/10 text-destructive rounded-md">
+                    {engError}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Views</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={engViews}
+                      onChange={(e) => setEngViews(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Likes</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={engLikes}
+                      onChange={(e) => setEngLikes(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Shares</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={engShares}
+                      onChange={(e) => setEngShares(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Clicks Shopee</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={engClicks}
+                      onChange={(e) => setEngClicks(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <Label className="text-[11px]">Orders (Shopee)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={engOrders}
+                      onChange={(e) => setEngOrders(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddEngagement(false)}
+                    className="h-7 text-xs"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isPending}
+                    className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1"
+                  >
+                    {isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Check className="w-3 h-3" />
+                    )}
+                    Simpan Metrik
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Engagement History Table */}
+            {distribution.engagements && distribution.engagements.length > 1 && (
+              <div className="space-y-1 pt-1">
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  Riwayat Metrik Terupdate:
+                </span>
+                <div className="max-h-28 overflow-y-auto rounded-md border border-border divide-y divide-border text-xs bg-card">
+                  {distribution.engagements.map((m) => (
+                    <div
+                      key={m.id}
+                      className="p-2 flex items-center justify-between hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(m.capturedAt).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        <span className="font-medium">
+                          {m.viewsCount.toLocaleString("id-ID")} views
+                        </span>
+                        <span>&bull;</span>
+                        <span>{m.clicksCount.toLocaleString("id-ID")} clicks</span>
+                        {m.ordersCount !== null && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              {m.ordersCount} orders
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEngagement(m.id)}
+                        className="text-muted-foreground hover:text-destructive p-1"
+                        title="Hapus riwayat ini"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

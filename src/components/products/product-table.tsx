@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -25,6 +25,9 @@ import {
   Package,
   Share2,
   Video,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,6 +57,7 @@ export interface ProductItem extends ProductData {
   distributionsCount: number;
   contentsCount: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 interface ProductTableProps {
@@ -110,9 +114,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
             description: res.message || "Terjadi kesalahan saat menghapus data.",
           });
         } else {
-          toast.success("Data produk berhasil dihapus", {
-            description: `Produk "${target.productName}" telah berhasil dihapus dari katalog.`,
-          });
+          toast.error("Data produk berhasil dihapus");
           router.refresh();
         }
       } catch (error) {
@@ -122,6 +124,13 @@ export function ProductTable({ products, categories }: ProductTableProps) {
         console.error(error);
       }
     });
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setCurrentPage(1);
   };
 
   // Filter products locally for instant response
@@ -143,24 +152,45 @@ export function ProductTable({ products, categories }: ProductTableProps) {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Pagination state & calculations (10 products per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Auto-reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCategory, selectedStatus]);
+
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-            Aktif
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block" />
+            Active
           </span>
         );
+      case "hold":
       case "paused":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-            Ditunda
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+            Hold
           </span>
         );
+      case "non_active":
       case "expired":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
-            Expired
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+            Non Active
           </span>
         );
       default:
@@ -206,10 +236,23 @@ export function ProductTable({ products, categories }: ProductTableProps) {
               className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-input bg-background outline-none focus:border-ring focus:ring-1 focus:ring-ring font-medium"
             >
               <option value="all">Semua Status</option>
-              <option value="active">🟢 Aktif</option>
-              <option value="paused">🟡 Ditunda</option>
-              <option value="expired">🔴 Expired</option>
+              <option value="active">🟢 Active</option>
+              <option value="hold">🟡 Hold</option>
+              <option value="non_active">🔴 Non Active</option>
             </select>
+
+            {/* Reset Filter Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleResetFilters}
+              className="h-9 w-9 border-input hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+              title="Reset filter & datatable"
+              aria-label="Reset filter & datatable"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
 
@@ -290,7 +333,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredProducts.map((item) => {
+              paginatedProducts.map((item) => {
                 const isCopied = copiedId === item.id;
                 return (
                   <TableRow
@@ -448,6 +491,83 @@ export function ProductTable({ products, categories }: ProductTableProps) {
         </Table>
       </div>
 
+      {/* Pagination Controls (10 products per page) */}
+      {totalItems > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-1 text-xs text-muted-foreground">
+          <div>
+            Menampilkan <span className="font-semibold text-foreground">{startIndex + 1}</span> -{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> dari{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> produk
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={safeCurrentPage <= 1}
+                className="h-8 w-8 p-0"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                // Show first, last, and pages around current page
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                ) {
+                  const isActive = pageNum === safeCurrentPage;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`h-8 min-w-8 px-2 text-xs font-semibold ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+
+                if (
+                  (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
+                  (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
+                ) {
+                  return (
+                    <span key={pageNum} className="px-1 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                }
+
+                return null;
+              })}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={safeCurrentPage >= totalPages}
+                className="h-8 w-8 p-0"
+                title="Halaman Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Product Detail Modal */}
       <ProductDetailModal
         open={isDetailOpen}
@@ -462,6 +582,7 @@ export function ProductTable({ products, categories }: ProductTableProps) {
 
       {/* Product Create / Edit Modal */}
       <ProductFormModal
+        key={productToEdit?.id || (isFormOpen ? "new" : "closed")}
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         productToEdit={productToEdit}
@@ -470,18 +591,24 @@ export function ProductTable({ products, categories }: ProductTableProps) {
 
       {/* Delete Confirmation Alert Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-1">
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center">
               <Trash2 className="w-5 h-5" />
             </div>
-            <AlertDialogTitle>Hapus Data Produk?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus produk{" "}
-              <span className="font-bold text-foreground">
-                &quot;{productToDelete?.productName}&quot;
+            <AlertDialogTitle className="text-lg font-bold text-foreground">
+              Hapus Data Produk?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-1 text-xs text-muted-foreground block">
+              <span className="block">Apakah Anda yakin ingin menghapus produk ini?</span>
+
+              <span className="block p-3 rounded-lg bg-muted/60 border border-border/80 text-foreground font-semibold text-sm leading-relaxed text-center">
+                &ldquo;{productToDelete?.productName}&rdquo;
               </span>
-              ? Tindakan ini akan menghapus produk dari katalog secara permanen dan tidak dapat dibatalkan.
+
+              <span className="block text-[11px] text-muted-foreground/80 leading-relaxed">
+                Tindakan ini akan menghapus produk dari katalog secara permanen dan tidak dapat dibatalkan.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -10,7 +10,7 @@ const PersonaSchema = z.object({
   description: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
   platforms: z.record(z.string(), z.string()).optional().nullable(),
-  status: z.enum(["active", "inactive"]).default("active"),
+  status: z.enum(["active", "on_hiatus", "deactive", "inactive"]).default("active"),
 });
 
 export type PersonaActionState = {
@@ -119,7 +119,7 @@ export async function createPersona(
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || null;
   const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const status = (formData.get("status") as "active" | "inactive") || "active";
+  const status = (formData.get("status") as string) || "active";
 
   // Parse niches from comma-separated string or array
   const rawNiches = formData.get("niches") as string;
@@ -198,7 +198,7 @@ export async function updatePersona(
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || null;
   const avatarUrl = (formData.get("avatarUrl") as string) || null;
-  const status = (formData.get("status") as "active" | "inactive") || "active";
+  const status = (formData.get("status") as string) || "active";
 
   const rawNiches = formData.get("niches") as string;
   const niches = rawNiches
@@ -291,3 +291,40 @@ export async function deletePersona(id: string): Promise<PersonaActionState> {
     };
   }
 }
+
+export async function updatePersonaStatus(
+  id: string,
+  status: "active" | "on_hiatus" | "deactive" | "inactive"
+): Promise<PersonaActionState> {
+  try {
+    const persona = await prisma.persona.update({
+      where: { id },
+      data: { status },
+    });
+
+    revalidatePath("/personas");
+    revalidatePath("/distributions");
+    revalidatePath("/content");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: `Status persona "${persona.name}" berhasil diubah menjadi ${
+        status === "on_hiatus"
+          ? "On Hiatus"
+          : status === "active"
+          ? "Aktif"
+          : status === "deactive"
+          ? "Deactive"
+          : "Nonaktif"
+      }.`,
+    };
+  } catch (error) {
+    console.error("Update persona status error:", error);
+    return {
+      success: false,
+      message: "Gagal memperbarui status persona.",
+    };
+  }
+}
+

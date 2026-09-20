@@ -70,6 +70,24 @@ export interface DistributionItemData {
       affiliateLink: string;
     };
   }>;
+  latestEngagement?: {
+    id: string;
+    likesCount: number;
+    viewsCount: number;
+    sharesCount: number;
+    clicksCount: number;
+    ordersCount: number | null;
+    capturedAt: Date | string;
+  } | null;
+  engagements?: Array<{
+    id: string;
+    likesCount: number;
+    viewsCount: number;
+    sharesCount: number;
+    clicksCount: number;
+    ordersCount: number | null;
+    capturedAt: Date | string;
+  }>;
 }
 
 interface DistributionTableProps {
@@ -77,6 +95,7 @@ interface DistributionTableProps {
   products: SimpleProductOption[];
   platforms: SimplePlatformOption[];
   personas: SimplePersonaOption[];
+  campaigns?: string[];
 }
 
 export function DistributionTable({
@@ -84,6 +103,7 @@ export function DistributionTable({
   products,
   platforms,
   personas,
+  campaigns = [],
 }: DistributionTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -94,6 +114,7 @@ export function DistributionTable({
   const [selectedPersona, setSelectedPersona] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedCampaign, setSelectedCampaign] = useState("all");
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -138,12 +159,16 @@ export function DistributionTable({
     const matchesStatus =
       selectedStatus === "all" || item.status === selectedStatus;
 
+    const matchesCampaign =
+      selectedCampaign === "all" || item.campaign === selectedCampaign;
+
     return (
       matchesSearch &&
       matchesPlatform &&
       matchesPersona &&
       matchesType &&
-      matchesStatus
+      matchesStatus &&
+      matchesCampaign
     );
   });
 
@@ -256,6 +281,22 @@ export function DistributionTable({
             <option value="approved">Disetujui</option>
             <option value="rejected">Ditolak</option>
           </select>
+
+          {/* Campaign Filter */}
+          {campaigns.length > 0 && (
+            <select
+              value={selectedCampaign}
+              onChange={(e) => setSelectedCampaign(e.target.value)}
+              className="w-full sm:w-36 h-9 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary font-medium"
+            >
+              <option value="all">Semua Campaign</option>
+              {campaigns.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Add Distribution button */}
@@ -292,6 +333,9 @@ export function DistributionTable({
                 <TableHead className="w-[130px] text-xs font-semibold text-muted-foreground text-center">
                   Status
                 </TableHead>
+                <TableHead className="w-[140px] text-xs font-semibold text-muted-foreground">
+                  Metrik & Konversi
+                </TableHead>
                 <TableHead className="w-[130px] text-xs font-semibold text-muted-foreground">
                   Waktu Sebar
                 </TableHead>
@@ -307,7 +351,7 @@ export function DistributionTable({
               {filteredDistributions.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="h-44 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -410,6 +454,34 @@ export function DistributionTable({
                       {getStatusBadge(item.status)}
                     </TableCell>
 
+                    {/* Engagement & Conversion */}
+                    <TableCell className="py-3">
+                      {item.latestEngagement ? (
+                        <div className="space-y-0.5 text-[11px]">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <span>
+                              {item.latestEngagement.viewsCount.toLocaleString("id-ID")}{" "}
+                              views
+                            </span>
+                            <span>&bull;</span>
+                            <span className="text-primary font-semibold">
+                              {item.latestEngagement.clicksCount} clicks
+                            </span>
+                          </div>
+                          {item.latestEngagement.ordersCount !== null &&
+                            item.latestEngagement.ordersCount > 0 && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                {item.latestEngagement.ordersCount} orders
+                              </span>
+                            )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground/60 italic">
+                          Belum ada
+                        </span>
+                      )}
+                    </TableCell>
+
                     {/* Posted At */}
                     <TableCell className="py-3 text-xs text-muted-foreground">
                       {new Date(item.postedAt).toLocaleDateString("id-ID", {
@@ -498,12 +570,14 @@ export function DistributionTable({
 
       {/* Form Modal */}
       <DistributionFormModal
+        key={distToEdit?.id || (isFormOpen ? "new" : "closed")}
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         distributionToEdit={distToEdit}
         products={products}
         platforms={platforms}
         personas={personas}
+        campaignOptions={campaigns}
         onSuccess={() => router.refresh()}
       />
 

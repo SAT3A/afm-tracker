@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/dal";
 import { getDistributions } from "@/app/actions/distributions";
-import { getProducts } from "@/app/actions/products";
+import { getProducts, getAllCampaigns } from "@/app/actions/products";
 import { getPlatforms } from "@/app/actions/platforms";
 import { getPersonas } from "@/app/actions/personas";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -9,12 +9,13 @@ import { Share2, Clock, CheckCircle2, Package } from "lucide-react";
 
 export default async function DistributionsPage() {
   const user = await getCurrentUser();
-  const [distributions, rawProducts, rawPlatforms, rawPersonas] =
+  const [distributions, rawProducts, rawPlatforms, rawPersonas, campaigns] =
     await Promise.all([
       getDistributions(),
       getProducts({ status: "active" }),
       getPlatforms({ status: "active" }),
       getPersonas({ status: "active" }),
+      getAllCampaigns(),
     ]);
 
   // Map to simple options for modals
@@ -139,6 +140,7 @@ export default async function DistributionsPage() {
           products={products}
           platforms={platforms}
           personas={personas}
+          campaigns={campaigns}
         />
       </main>
 

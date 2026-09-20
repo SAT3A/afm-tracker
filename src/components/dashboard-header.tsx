@@ -29,6 +29,7 @@ import {
   Video,
   Clock,
   Calendar,
+  Tag,
   LogOut,
   Menu,
   X,
@@ -55,6 +56,7 @@ const navItems = [
   { label: "Content AI", href: "/content", icon: Video },
   { label: "Best Time", href: "/best-time", icon: Clock },
   { label: "Schedule", href: "/schedule", icon: Calendar },
+  { label: "Campaigns", href: "/campaigns", icon: Tag },
 ];
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
