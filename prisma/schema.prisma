@@ -116,10 +116,11 @@ model DistributionEngagement {
   likesCount     Int          @default(0) @map("likes_count")
   viewsCount     Int          @default(0) @map("views_count")
   sharesCount    Int          @default(0) @map("shares_count")
-  clicksCount    Int          @default(0) @map("clicks_count")
-  ordersCount    Int?         @map("orders_count")
-  capturedAt     DateTime     @default(now()) @map("captured_at")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  clicksCount      Int          @default(0) @map("clicks_count")
+  ordersCount      Int?         @map("orders_count")
+  actualCommission Decimal?     @db.Decimal(12, 2) @map("actual_commission")
+  capturedAt       DateTime     @default(now()) @map("captured_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
 
   distribution   Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
 
@@ -127,17 +128,21 @@ model DistributionEngagement {
 }
 
 model Content {
-  id          String   @id @default(uuid())
-  personaId   String   @map("persona_id")
-  title       String
-  contentType String   @map("content_type") // shopee_video / fb_reels / ig_reels / tiktok / other
-  platformUrl String   @map("platform_url")
-  campaign    String?
-  publishedAt DateTime @default(now()) @map("published_at")
-  notes       String?  @db.Text
-  status      String   @default("published") // published / draft / deleted
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  personaId     String   @map("persona_id")
+  title         String
+  contentType   String   @map("content_type") // shopee_video / fb_reels / ig_reels / tiktok / other
+  hookType      String?  @map("hook_type") // problem / curiosity / price / comparison / warning / story / other
+  creativeAngle String?  @map("creative_angle")
+  contentFormat String?  @map("content_format")
+  ctaType       String?  @map("cta_type")
+  platformUrl   String   @map("platform_url")
+  campaign      String?
+  publishedAt   DateTime @default(now()) @map("published_at")
+  notes         String?  @db.Text
+  status        String   @default("published") // published / draft / deleted
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   persona     Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
   products    ContentProduct[]
@@ -159,16 +164,18 @@ model ContentProduct {
 }
 
 model ContentMetric {
-  id            String   @id @default(uuid())
-  contentId     String   @map("content_id")
-  viewsCount    Int      @default(0) @map("views_count")
-  likesCount    Int      @default(0) @map("likes_count")
-  commentsCount Int      @default(0) @map("comments_count")
-  sharesCount   Int      @default(0) @map("shares_count")
-  savesCount    Int?     @map("saves_count")
-  clicksCount   Int?     @map("clicks_count")
-  capturedAt    DateTime @default(now()) @map("captured_at")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  contentId        String   @map("content_id")
+  viewsCount       Int      @default(0) @map("views_count")
+  likesCount       Int      @default(0) @map("likes_count")
+  commentsCount    Int      @default(0) @map("comments_count")
+  sharesCount      Int      @default(0) @map("shares_count")
+  savesCount       Int?     @map("saves_count")
+  clicksCount      Int?     @map("clicks_count")
+  ordersCount      Int?     @default(0) @map("orders_count")
+  actualCommission Decimal? @db.Decimal(12, 2) @map("actual_commission")
+  capturedAt       DateTime @default(now()) @map("captured_at")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   content       Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
