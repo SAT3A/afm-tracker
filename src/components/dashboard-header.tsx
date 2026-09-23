@@ -31,7 +31,8 @@ import {
   Calendar,
   Tag,
   LogOut,
-  PanelLeft,
+  Menu,
+  X,
   User,
   ShieldCheck,
   Mail,
@@ -138,37 +139,29 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <header className="sticky top-0 z-30 bg-card/90 backdrop-blur-md border-b border-border transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Left Header Section:
-                1. Tombol trigger sidebar (PanelLeft)
-                2. AFM Tracker (tanpa enterprise)
-                3. Logo spark biru (tanpa garis pemisah)
-            */}
-            <div className="flex items-center gap-2.5">
-              {/* 1. Tombol Trigger Sidebar (menggantikan posisi logo di paling kiri) */}
+            {/* Logo & Brand Trigger (Clicking logo / brand opens the left sidebar) */}
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setSidebarOpen((prev) => !prev)}
-                className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
-                title="Buka / Tutup Sidebar"
-                aria-label="Toggle Sidebar Navigasi"
+                onClick={() => setSidebarOpen(true)}
+                className="flex items-center gap-3 p-1.5 -ml-1.5 rounded-xl hover:bg-muted/70 active:scale-95 transition-all text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                title="Buka Navigasi Modul (Sidebar)"
+                aria-label="Buka Menu Navigasi AFM Tracker"
                 aria-expanded={sidebarOpen}
               >
-                <PanelLeft className="w-4 h-4" />
-              </button>
-
-              {/* 2. AFM Tracker + 3. Logo spark warna biru (tanpa garis pemisah & tanpa enterprise) */}
-              <Link
-                href="/"
-                className="flex items-center gap-2.5 px-1 py-1 rounded-xl hover:opacity-90 active:scale-98 transition-all group"
-                title="AFM Tracker - Ke Dashboard"
-              >
-                <span className="font-bold text-base sm:text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
-                  AFM Tracker
-                </span>
-                <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 group-hover:scale-105 group-hover:shadow-primary/40 transition-all">
-                  <Sparkles className="w-4 h-4" />
+                <div className="relative w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 group-hover:scale-105 group-hover:shadow-primary/40 transition-all">
+                  <Sparkles className="w-4 h-4 transition-transform group-hover:rotate-12" />
                 </div>
-              </Link>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+                    AFM Tracker
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border group-hover:border-primary/40 group-hover:text-foreground transition-all">
+                    <Menu className="w-3.5 h-3.5" />
+                    <span>Menu</span>
+                  </span>
+                </div>
+              </button>
             </div>
 
             {/* Right Header Actions */}
@@ -180,7 +173,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    className="w-9 h-9 rounded-xl bg-muted border border-border hover:border-primary/50 flex items-center justify-center text-foreground transition-all cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                    className="w-9 h-9 rounded-xl bg-muted border border-border hover:border-primary/50 flex items-center justify-center text-foreground transition-all cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-ring/20"
                     title="Menu Akun Pengguna"
                     aria-label="Menu Akun Pengguna"
                   >
@@ -253,15 +246,20 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          {/* Sidebar Header with blue Sparkles logo + AFM Tracker + PanelLeft close toggle */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25">
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <span className="font-bold text-base tracking-tight text-foreground">
-                AFM Tracker
-              </span>
+              <div>
+                <h2 className="font-bold text-base tracking-tight text-foreground">
+                  AFM Tracker
+                </h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Content-to-Sales Hub
+                </p>
+              </div>
             </div>
 
             <Button
@@ -269,10 +267,10 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               size="icon"
               onClick={() => setSidebarOpen(false)}
               className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-              title="Tutup Sidebar (PanelLeft / Esc)"
-              aria-label="Tutup Sidebar"
+              title="Tutup Menu (Esc)"
+              aria-label="Tutup Menu"
             >
-              <PanelLeft className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
 
