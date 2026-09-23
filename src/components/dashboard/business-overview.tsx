@@ -2,16 +2,18 @@
 
 import { Eye, MousePointerClick, ShoppingBag, Coins, ArrowRight, HeartHandshake, Info } from "lucide-react";
 import { formatCompactNumber, formatCurrencyIDR, formatPercentage } from "@/lib/analytics/metrics";
+import type { MetricBasis } from "@/lib/analytics/config";
 
 interface BusinessOverviewProps {
   metrics: {
     totalViews: number;
     videoViews: number;
     postImpressions: number;
+    reachBasis: MetricBasis;
     totalEngagements: number;
-    engagementRate: number;
+    engagementRate: number | null;
     affiliateClicks: number;
-    affiliateCTR: number;
+    affiliateCTR: number | null;
     orders: number;
     conversionRate: number;
     commission: number;
@@ -21,21 +23,32 @@ interface BusinessOverviewProps {
     totalDistributions: number;
     pendingDistributions: number;
     totalContents: number;
+    canonicalCommercialSource?: "DistributionEngagement" | "ContentMetric";
   };
 }
 
 export function BusinessOverview({ metrics }: BusinessOverviewProps) {
+  const isMixed = metrics.reachBasis === "mixed";
+
   return (
     <div className="space-y-4">
-      {/* Section Title */}
-      <div className="flex items-center justify-between">
+      {/* Section Title & Attribution Source Indicator */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
             Overview Arus Komersial Affiliate
           </h2>
           <p className="text-xs text-muted-foreground">
-            Alur throughput komersial utama dari jangkauan audiens hingga estimasi komisi penjualan.
+            Throughput konversi komersial kanonik (tanpa double counting data lintas tabel).
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-muted/80 text-muted-foreground border border-border"
+            title="Sumber kanonik klik, pesanan, dan komisi utama pada Business Overview"
+          >
+            Kanonik: {metrics.canonicalCommercialSource || "DistributionEngagement"}
+          </span>
         </div>
       </div>
 
@@ -45,7 +58,7 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
         <div className="relative p-5 rounded-2xl border border-border bg-card shadow-xs flex flex-col justify-between overflow-hidden group hover:border-primary/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
-              1. Total Jangkauan
+              1. Total Jangkauan Observasi
             </span>
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
               <Eye className="w-4 h-4" />
@@ -58,10 +71,18 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
             </p>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border"
-                title="Penyebut gabungan (Mixed Basis): Video Plays (Views) dan Tayangan Feed (Impressions)"
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border ${
+                  isMixed
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+                title={
+                  isMixed
+                    ? "Populasi gabungan Video Plays dan Impresi Feed (Mixed Basis)"
+                    : `Basis penayangan homogen: ${metrics.reachBasis}`
+                }
               >
-                Mixed Basis
+                {isMixed ? "Mixed Basis" : metrics.reachBasis === "views" ? "Views Basis" : "Impressions Basis"}
               </span>
               <span className="text-[11px] text-muted-foreground">
                 {formatCompactNumber(metrics.videoViews)} Views &bull; {formatCompactNumber(metrics.postImpressions)} Impresi
@@ -70,8 +91,10 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
           </div>
 
           <div className="pt-2 border-t border-border/50 text-[11px] text-muted-foreground flex items-center justify-between">
-            <span>Basis Penayangan</span>
-            <span className="font-semibold text-foreground">100% Top-of-Funnel</span>
+            <span>Basis Jangkauan</span>
+            <span className="font-semibold text-foreground">
+              {isMixed ? "Agregat Observasi" : "100% Homogen"}
+            </span>
           </div>
 
           {/* Connector Arrow on Desktop */}
@@ -98,17 +121,23 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
             <div className="flex items-center gap-1.5 mt-1">
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-primary/10 text-primary border border-primary/20"
-                title="Affiliate CTR = Total Klik / Total Jangkauan × 100%"
+                title={
+                  isMixed
+                    ? "CTR tidak dihitung agregat universal karena denominator mencampur Views dan Impresi"
+                    : "Affiliate CTR = Total Klik / Total Jangkauan × 100%"
+                }
               >
-                CTR: {formatPercentage(metrics.affiliateCTR)}
+                CTR: {isMixed ? "N/A (Mixed Basis)" : formatPercentage(metrics.affiliateCTR)}
               </span>
-              <span className="text-[11px] text-muted-foreground">Traffic ke Shopee</span>
+              <span className="text-[11px] text-muted-foreground">Traffic Shopee</span>
             </div>
           </div>
 
           <div className="pt-2 border-t border-border/50 text-[11px] text-muted-foreground flex items-center justify-between">
             <span>Rasio Klik (CTR)</span>
-            <span className="font-semibold text-foreground">{formatPercentage(metrics.affiliateCTR)} dari jangkauan</span>
+            <span className="font-semibold text-foreground">
+              {isMixed ? "Per platform di tabel" : `${formatPercentage(metrics.affiliateCTR)} dari jangkauan`}
+            </span>
           </div>
 
           {/* Connector Arrow on Desktop */}
@@ -158,7 +187,7 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
         <div className="p-5 rounded-2xl border border-border bg-card shadow-xs flex flex-col justify-between overflow-hidden group hover:border-emerald-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
-              4. Estimasi Komisi
+              4. Komisi Terpantau
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Coins className="w-4 h-4" />
@@ -200,7 +229,7 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
                 Resonansi Sosial Paralel: {formatCompactNumber(metrics.totalEngagements)} Interaksi
               </span>
               <span className="px-1.5 py-0.2 rounded font-bold text-[10px] bg-pink-500/10 text-pink-500 border border-pink-500/20">
-                ER: {formatPercentage(metrics.engagementRate)}
+                ER: {isMixed ? "N/A (Mixed Basis)" : formatPercentage(metrics.engagementRate)}
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -219,7 +248,7 @@ export function BusinessOverview({ metrics }: BusinessOverviewProps) {
             Sebaran: <strong className="text-foreground">{metrics.totalDistributions}</strong> ({metrics.pendingDistributions} pending)
           </span>
           <span className="px-2.5 py-1 rounded-xl bg-muted/60 border border-border text-[11px] text-muted-foreground">
-            Video AI: <strong className="text-foreground">{metrics.totalContents}</strong>
+            Konten: <strong className="text-foreground">{metrics.totalContents}</strong>
           </span>
         </div>
       </div>

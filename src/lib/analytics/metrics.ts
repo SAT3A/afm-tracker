@@ -8,22 +8,51 @@
 import type { MetricBasis } from "./config.ts";
 
 /**
+ * Explicitly resolves reach from observable views/impressions based on metricBasis.
+ * Guard: Never uses truthiness fallback when both values exist.
+ */
+export function resolveReach(params: {
+  metricBasis: MetricBasis;
+  views?: number | null;
+  impressions?: number | null;
+}): number {
+  if (params.metricBasis === "views") {
+    return Math.max(0, Number(params.views) || 0);
+  }
+  if (params.metricBasis === "impressions") {
+    return Math.max(0, Number(params.impressions) || 0);
+  }
+  // Mixed basis reach is an informational observation aggregate
+  return (
+    Math.max(0, Number(params.views) || 0) +
+    Math.max(0, Number(params.impressions) || 0)
+  );
+}
+
+/**
  * Calculates Engagement Rate (%)
  * Formula: (likes + comments + shares + saves) / denominator * 100
+ * Guard: Returns null for Mixed Basis to prevent invalid universal ratios.
  */
 export function calculateEngagementRate(
-  interactions: {
-    likes?: number | null;
-    comments?: number | null;
-    shares?: number | null;
-    saves?: number | null;
-  } | number,
+  interactions:
+    | {
+        likes?: number | null;
+        comments?: number | null;
+        shares?: number | null;
+        saves?: number | null;
+      }
+    | number,
   denominator: number | null | undefined,
   basis: MetricBasis = "views"
-): { rate: number; basis: MetricBasis } {
+): { rate: number | null; basis: MetricBasis; isMixed: boolean } {
+  if (basis === "mixed") {
+    return { rate: null, basis: "mixed", isMixed: true };
+  }
+
   const safeDenom = Number(denominator) || 0;
   if (safeDenom <= 0) {
-    return { rate: 0, basis };
+    return { rate: 0, basis, isMixed: false };
   }
 
   let totalInteractions = 0;
@@ -41,29 +70,36 @@ export function calculateEngagementRate(
   return {
     rate: Number.isFinite(rate) ? Number(rate.toFixed(2)) : 0,
     basis,
+    isMixed: false,
   };
 }
 
 /**
  * Calculates Affiliate CTR (%)
  * Formula: affiliateClicks / denominator * 100
+ * Guard: Returns null for Mixed Basis to prevent invalid universal ratios.
  */
 export function calculateCTR(
   affiliateClicks: number | null | undefined,
   denominator: number | null | undefined,
   basis: MetricBasis = "views"
-): { ctr: number; basis: MetricBasis } {
+): { ctr: number | null; basis: MetricBasis; isMixed: boolean } {
+  if (basis === "mixed") {
+    return { ctr: null, basis: "mixed", isMixed: true };
+  }
+
   const safeClicks = Math.max(0, Number(affiliateClicks) || 0);
   const safeDenom = Number(denominator) || 0;
 
   if (safeDenom <= 0) {
-    return { ctr: 0, basis };
+    return { ctr: 0, basis, isMixed: false };
   }
 
   const ctr = (safeClicks / safeDenom) * 100;
   return {
     ctr: Number.isFinite(ctr) ? Number(ctr.toFixed(2)) : 0,
     basis,
+    isMixed: false,
   };
 }
 
@@ -150,6 +186,7 @@ export function formatCurrencyIDR(
   amount: number | null | undefined,
   compact = false
 ): string {
+  if (amount == null) return "N/A";
   const safeAmount = Math.max(0, Number(amount) || 0);
 
   if (compact && safeAmount >= 1_000_000) {
@@ -163,11 +200,14 @@ export function formatCurrencyIDR(
 }
 
 /**
- * Format Percentage (e.g. 3.4%)
+ * Format Percentage (e.g. 3.4%, or N/A when null)
  */
-export function formatPercentage(val: number | null | undefined): string {
-  const safeVal = Number(val) || 0;
-  return `${safeVal.toFixed(1)}%`;
+export function formatPercentage(
+  val: number | null | undefined,
+  fallback = "N/A"
+): string {
+  if (val == null) return fallback;
+  return `${val.toFixed(1)}%`;
 }
 
 /**

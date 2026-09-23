@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Search, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { Package, Search, ChevronLeft, ChevronRight, TrendingUp, HelpCircle } from "lucide-react";
 import { formatCurrencyIDR, formatPercentage } from "@/lib/analytics/metrics";
 
 export interface ProductAnalyticsItem {
@@ -21,9 +21,10 @@ export interface ProductAnalyticsItem {
   totalOrders: number;
   ordersPerDistribution: number;
   cvr: number;
-  totalCommission: number;
+  totalCommission: number | null;
   commissionPerDistribution: number;
   epc: number;
+  isUnallocatedBucket?: boolean;
 }
 
 interface ProductAnalyticsTableProps {
@@ -57,7 +58,7 @@ export function ProductAnalyticsTable({ products }: ProductAnalyticsTableProps) 
               Efisiensi Kinerja Produk Affiliate
             </CardTitle>
             <CardDescription className="text-xs">
-              Mengevaluasi produk berdasarkan metrik efisiensi per sebaran link (bukan sekadar kuantitas sebar).
+              Mengevaluasi produk berdasarkan efisiensi per sebaran link tunggal (mencegah phantom multiplication pada sebaran multi-produk).
             </CardDescription>
           </div>
 
@@ -113,17 +114,35 @@ export function ProductAnalyticsTable({ products }: ProductAnalyticsTableProps) 
                   </TableRow>
                 ) : (
                   displayedProducts.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-muted/30 transition-colors">
+                    <TableRow
+                      key={p.id}
+                      className={`hover:bg-muted/30 transition-colors ${
+                        p.isUnallocatedBucket ? "bg-amber-500/[0.03] border-l-2 border-l-amber-500" : ""
+                      }`}
+                    >
                       {/* Product Name, Category & Price */}
                       <TableCell className="py-3">
                         <div className="space-y-0.5">
-                          <p className="font-semibold text-foreground line-clamp-1" title={p.productName}>
-                            {p.productName}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {p.brand} &bull; <span className="text-foreground font-medium">Rp {p.price.toLocaleString("id-ID")}</span> &bull; {p.category}{" "}
-                            <span className="text-secondary font-bold">({p.commissionRate}%)</span>
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-semibold text-foreground line-clamp-1" title={p.productName}>
+                              {p.productName}
+                            </p>
+                            {p.isUnallocatedBucket && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                Multi-produk
+                              </span>
+                            )}
+                          </div>
+                          {p.isUnallocatedBucket ? (
+                            <p className="text-[11px] text-muted-foreground italic">
+                              Hasil dari sebaran yang memuat lebih dari 1 produk tanpa atribusi per item.
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">
+                              {p.brand} &bull; <span className="text-foreground font-medium">Rp {p.price.toLocaleString("id-ID")}</span> &bull; {p.category}{" "}
+                              <span className="text-secondary font-bold">({p.commissionRate}%)</span>
+                            </p>
+                          )}
                         </div>
                       </TableCell>
 
@@ -151,7 +170,7 @@ export function ProductAnalyticsTable({ products }: ProductAnalyticsTableProps) 
 
                       {/* Total Commission */}
                       <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatCurrencyIDR(p.totalCommission, true)}
+                        {p.totalCommission == null ? "N/A" : formatCurrencyIDR(p.totalCommission, true)}
                       </TableCell>
 
                       {/* Commission per Distribution */}
@@ -174,12 +193,14 @@ export function ProductAnalyticsTable({ products }: ProductAnalyticsTableProps) 
           </div>
         </div>
 
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Menampilkan {displayedProducts.length} dari {filteredProducts.length} produk
-          </span>
-          <div className="flex items-center gap-1">
+        {/* Pagination & Explanatory Note */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+            <span>Atribusi langsung hanya diberikan pada sebaran 1 produk. Sebaran multi-produk dikelompokkan ke baris Unallocated untuk mencegah phantom multiplication.</span>
+          </div>
+
+          <div className="flex items-center gap-1 self-end sm:self-auto">
             <Button
               variant="outline"
               size="icon"

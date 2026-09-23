@@ -29,27 +29,18 @@ import { NichePerformanceChart } from "@/components/charts/niche-performance-cha
 import { GlobalAnalyticsFilter } from "@/components/dashboard/global-analytics-filter";
 import { BusinessOverview } from "@/components/dashboard/business-overview";
 import { AffiliateFunnelCard } from "@/components/dashboard/affiliate-funnel-card";
-import {
-  ContentPerformanceTable,
-  ContentPerformanceItem,
-} from "@/components/dashboard/content-performance-table";
-import {
-  ProductAnalyticsTable,
-  ProductAnalyticsItem,
-} from "@/components/dashboard/product-analytics-table";
-import {
-  ChannelEfficiencyTable,
-  ChannelEfficiencyItem,
-} from "@/components/dashboard/channel-efficiency-table";
+import { ContentPerformanceTable } from "@/components/dashboard/content-performance-table";
+import { ProductAnalyticsTable } from "@/components/dashboard/product-analytics-table";
+import { ChannelEfficiencyTable } from "@/components/dashboard/channel-efficiency-table";
 
 import {
-  calculateEngagementRate,
-  calculateCTR,
-  calculateConversionRate,
-  calculateEPC,
-  calculateEfficiency,
-} from "@/lib/analytics/metrics";
-import { evaluateContentDiagnostics } from "@/lib/analytics/diagnostics";
+  aggregateDashboardMetrics,
+  normalizePlatformToContentTypes,
+  type RawContentItem,
+  type RawDistributionItem,
+  type RawProduct,
+  type RawPlatform,
+} from "@/lib/analytics/aggregation";
 
 interface PageProps {
   searchParams?: Promise<{
@@ -126,9 +117,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     contentWhere.products = { some: { productId: selectedProduct } };
   }
   if (selectedPlatform) {
+    const matchingTypes = normalizePlatformToContentTypes(selectedPlatform);
     contentWhere.contentType = {
-      contains: selectedPlatform,
-      mode: "insensitive",
+      in: matchingTypes,
     };
   }
   if (selectedChannel) {
@@ -240,192 +231,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const platformTypesList = Array.from(platformTypeSet);
 
   // ----------------------------------------------------
-  // 1. CANONICAL AGGREGATION FOR BUSINESS OVERVIEW & FUNNEL
+  // CENTRALIZED CANONICAL AGGREGATION ENGINE
   // ----------------------------------------------------
-  const contentPerformanceItems: ContentPerformanceItem[] = filteredContents.map(
-    (c) => {
-      const metric = c.metrics[0];
-      const views = metric?.viewsCount || 0;
-      const likes = metric?.likesCount || 0;
-      const comments = metric?.commentsCount || 0;
-      const shares = metric?.sharesCount || 0;
-      const saves = metric?.savesCount || 0;
-      const clicks = metric?.clicksCount || 0;
-      const orders = metric?.ordersCount || 0;
-      const totalEng = likes + comments + shares + saves;
-
-      let comm = 0;
-      let isActual = false;
-      if (metric?.actualCommission != null) {
-        comm = Number(metric.actualCommission);
-        isActual = true;
-      } else if (orders > 0 && c.products.length > 0) {
-        const avgCommPerOrder =
-          c.products.reduce((acc, cp) => {
-            return (
-              acc +
-              (Number(cp.product.price) * Number(cp.product.commissionRate)) /
-                100
-            );
-          }, 0) / c.products.length;
-        comm = orders * avgCommPerOrder;
-      }
-
-      const er = calculateEngagementRate(totalEng, views).rate;
-      const ctr = calculateCTR(clicks, views).ctr;
-      const cvr = calculateConversionRate(orders, clicks);
-      const epc = calculateEPC(comm, clicks);
-      const diagnostics = evaluateContentDiagnostics({
-        views,
-        clicks,
-        orders,
-        likes,
-        comments,
-        shares,
-        saves,
-      });
-
-      return {
-        id: c.id,
-        title: c.title,
-        contentType: c.contentType,
-        platformUrl: c.platformUrl,
-        publishedAt: c.publishedAt,
-        personaName: c.persona.name,
-        productNames: c.products.map((cp) => cp.product.productName),
-        views,
-        likes,
-        comments,
-        shares,
-        saves,
-        clicks,
-        orders,
-        commission: comm,
-        isActualCommission: isActual,
-        er,
-        ctr,
-        cvr,
-        epc,
-        diagnosisStatus: diagnostics.status,
-        diagnosisBadge: diagnostics.badgeLabel,
-        possibleBottleneck: diagnostics.possibleBottleneck,
-        suggestedTest: diagnostics.suggestedTest,
-      };
-    }
-  );
-
-  const totalVideoViews = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.views,
-    0
-  );
-  const totalContentLikes = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.likes,
-    0
-  );
-  const totalContentComments = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.comments,
-    0
-  );
-  const totalContentShares = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.shares,
-    0
-  );
-  const totalContentSaves = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.saves,
-    0
-  );
-  const totalContentClicks = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.clicks,
-    0
-  );
-  const totalContentOrders = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.orders,
-    0
-  );
-  const totalContentCommission = contentPerformanceItems.reduce(
-    (acc, c) => acc + c.commission,
-    0
-  );
-
-  let totalPostImpressions = 0;
-  let totalDistLikes = 0;
-  let totalDistShares = 0;
-  let totalDistClicks = 0;
-  let totalDistOrders = 0;
-  let totalDistCommission = 0;
-
-  for (const dist of filteredDistributions) {
-    const eng = dist.engagements[0];
-    const views = eng?.viewsCount || 0;
-    const likes = eng?.likesCount || 0;
-    const shares = eng?.sharesCount || 0;
-    const clicks = eng?.clicksCount || 0;
-    const orders = eng?.ordersCount || 0;
-
-    totalPostImpressions += views;
-    totalDistLikes += likes;
-    totalDistShares += shares;
-    totalDistClicks += clicks;
-    totalDistOrders += orders;
-
-    if (eng?.actualCommission != null) {
-      totalDistCommission += Number(eng.actualCommission);
-    } else if (orders > 0 && dist.items.length > 0) {
-      const avgComm =
-        dist.items.reduce(
-          (sum, item) =>
-            sum +
-            (Number(item.product.price) *
-              Number(item.product.commissionRate)) /
-              100,
-          0
-        ) / dist.items.length;
-      totalDistCommission += orders * avgComm;
-    }
-  }
-
-  // Combined Totals (Canonical Attribution)
-  const combinedTotalViews = totalVideoViews + totalPostImpressions;
-  const combinedAffiliateClicks = totalContentClicks + totalDistClicks;
-  const combinedOrders = totalContentOrders + totalDistOrders;
-  const combinedCommission = totalContentCommission + totalDistCommission;
-
-  const totalLikes = totalContentLikes + totalDistLikes;
-  const totalComments = totalContentComments;
-  const totalShares = totalContentShares + totalDistShares;
-  const totalSaves = totalContentSaves;
-  const combinedEngagements =
-    totalLikes + totalComments + totalShares + totalSaves;
-
-  const overallER = calculateEngagementRate(
-    combinedEngagements,
-    combinedTotalViews
-  ).rate;
-  const overallCTR = calculateCTR(
-    combinedAffiliateClicks,
-    combinedTotalViews
-  ).ctr;
-  const overallCVR = calculateConversionRate(
-    combinedOrders,
-    combinedAffiliateClicks
-  );
-  const overallEPC = calculateEPC(
-    combinedCommission,
-    combinedAffiliateClicks
-  );
+  const aggregated = aggregateDashboardMetrics({
+    contents: filteredContents as unknown as RawContentItem[],
+    distributions: filteredDistributions as unknown as RawDistributionItem[],
+    allProducts: allProducts as unknown as RawProduct[],
+    allPlatforms: allPlatforms as unknown as RawPlatform[],
+  });
 
   const businessOverviewMetrics = {
-    totalViews: combinedTotalViews,
-    videoViews: totalVideoViews,
-    postImpressions: totalPostImpressions,
-    totalEngagements: combinedEngagements,
-    engagementRate: overallER,
-    affiliateClicks: combinedAffiliateClicks,
-    affiliateCTR: overallCTR,
-    orders: combinedOrders,
-    conversionRate: overallCVR,
-    commission: combinedCommission,
-    epc: overallEPC,
+    totalViews: aggregated.businessOverview.totalReach,
+    videoViews: aggregated.businessOverview.videoViews,
+    postImpressions: aggregated.businessOverview.postImpressions,
+    reachBasis: aggregated.businessOverview.reachBasis,
+    totalEngagements: aggregated.businessOverview.totalEngagements,
+    engagementRate: aggregated.businessOverview.engagementRate,
+    affiliateClicks: aggregated.businessOverview.affiliateClicks,
+    affiliateCTR: aggregated.businessOverview.affiliateCTR,
+    orders: aggregated.businessOverview.orders,
+    conversionRate: aggregated.businessOverview.conversionRate,
+    commission: aggregated.businessOverview.commission,
+    epc: aggregated.businessOverview.epc,
     totalProducts: allProducts.length,
     activeProducts: allProducts.filter((p) => p.status === "active").length,
     totalDistributions: filteredDistributions.length,
@@ -433,210 +260,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       (d) => d.status === "pending_approval"
     ).length,
     totalContents: filteredContents.length,
+    canonicalCommercialSource:
+      aggregated.businessOverview.canonicalCommercialSource,
   };
 
   const affiliateFunnelData = {
-    views: combinedTotalViews,
-    videoViews: totalVideoViews,
-    postImpressions: totalPostImpressions,
-    clicks: combinedAffiliateClicks,
-    orders: combinedOrders,
-    commission: combinedCommission,
-    epc: overallEPC,
-    ctr: overallCTR,
-    cvr: overallCVR,
-    engagements: {
-      likes: totalLikes,
-      comments: totalComments,
-      shares: totalShares,
-      saves: totalSaves,
-      total: combinedEngagements,
-      rate: overallER,
-    },
+    views: aggregated.affiliateFunnel.reach,
+    videoViews: aggregated.affiliateFunnel.videoViews,
+    postImpressions: aggregated.affiliateFunnel.postImpressions,
+    reachBasis: aggregated.affiliateFunnel.reachBasis,
+    clicks: aggregated.affiliateFunnel.clicks,
+    orders: aggregated.affiliateFunnel.orders,
+    commission: aggregated.affiliateFunnel.commission,
+    epc: aggregated.affiliateFunnel.epc,
+    ctr: aggregated.affiliateFunnel.ctr,
+    cvr: aggregated.affiliateFunnel.cvr,
+    engagements: aggregated.affiliateFunnel.engagements,
   };
 
-  // ----------------------------------------------------
-  // 2. PRODUCT EFFICIENCY AGGREGATION
-  // ----------------------------------------------------
-  const productAggregationMap = new Map<
-    string,
-    {
-      product: (typeof allProducts)[0];
-      distributionCount: number;
-      totalClicks: number;
-      totalOrders: number;
-      totalCommission: number;
-    }
-  >();
-
-  for (const p of allProducts) {
-    productAggregationMap.set(p.id, {
-      product: p,
-      distributionCount: 0,
-      totalClicks: 0,
-      totalOrders: 0,
-      totalCommission: 0,
-    });
-  }
-
-  for (const dist of filteredDistributions) {
-    const eng = dist.engagements[0];
-    const clicks = eng?.clicksCount || 0;
-    const orders = eng?.ordersCount || 0;
-
-    for (const item of dist.items) {
-      const entry = productAggregationMap.get(item.product.id);
-      if (entry) {
-        entry.distributionCount += 1;
-        entry.totalClicks += clicks;
-        entry.totalOrders += orders;
-        if (eng?.actualCommission != null) {
-          entry.totalCommission +=
-            Number(eng.actualCommission) / dist.items.length;
-        } else if (orders > 0) {
-          const itemComm =
-            (Number(item.product.price) *
-              Number(item.product.commissionRate)) /
-            100;
-          entry.totalCommission += orders * itemComm;
-        }
-      }
-    }
-  }
-
-  const productAnalyticsItems: ProductAnalyticsItem[] = Array.from(
-    productAggregationMap.values()
-  )
-    .filter((p) => p.distributionCount > 0 || !selectedProduct)
-    .map(
-      ({
-        product,
-        distributionCount,
-        totalClicks,
-        totalOrders,
-        totalCommission,
-      }) => {
-        return {
-          id: product.id,
-          productName: product.productName,
-          brand: product.brand,
-          category: product.category || "Lainnya",
-          price: Number(product.price),
-          commissionRate: Number(product.commissionRate),
-          distributionCount,
-          totalClicks,
-          clicksPerDistribution: calculateEfficiency(
-            totalClicks,
-            distributionCount
-          ),
-          totalOrders,
-          ordersPerDistribution: calculateEfficiency(
-            totalOrders,
-            distributionCount
-          ),
-          cvr: calculateConversionRate(totalOrders, totalClicks),
-          totalCommission,
-          commissionPerDistribution: calculateEfficiency(
-            totalCommission,
-            distributionCount
-          ),
-          epc: calculateEPC(totalCommission, totalClicks),
-        };
-      }
-    )
-    .sort(
-      (a, b) =>
-        b.totalCommission - a.totalCommission || b.totalClicks - a.totalClicks
-    );
-
-  // ----------------------------------------------------
-  // 3. CHANNEL / GROUP EFFICIENCY AGGREGATION
-  // ----------------------------------------------------
-  const channelAggregationMap = new Map<
-    string,
-    {
-      platform: (typeof allPlatforms)[0];
-      distributionCount: number;
-      totalClicks: number;
-      totalOrders: number;
-      totalCommission: number;
-    }
-  >();
-
-  for (const pl of allPlatforms) {
-    channelAggregationMap.set(pl.id, {
-      platform: pl,
-      distributionCount: 0,
-      totalClicks: 0,
-      totalOrders: 0,
-      totalCommission: 0,
-    });
-  }
-
-  for (const dist of filteredDistributions) {
-    const eng = dist.engagements[0];
-    const clicks = eng?.clicksCount || 0;
-    const orders = eng?.ordersCount || 0;
-    const entry = channelAggregationMap.get(dist.platform.id);
-    if (entry) {
-      entry.distributionCount += 1;
-      entry.totalClicks += clicks;
-      entry.totalOrders += orders;
-      if (eng?.actualCommission != null) {
-        entry.totalCommission += Number(eng.actualCommission);
-      } else if (orders > 0 && dist.items.length > 0) {
-        const avgComm =
-          dist.items.reduce(
-            (sum, item) =>
-              sum +
-              (Number(item.product.price) *
-                Number(item.product.commissionRate)) /
-                100,
-            0
-          ) / dist.items.length;
-        entry.totalCommission += orders * avgComm;
-      }
-    }
-  }
-
-  const channelEfficiencyItems: ChannelEfficiencyItem[] = Array.from(
-    channelAggregationMap.values()
-  )
-    .filter((ch) => ch.distributionCount > 0 || !selectedChannel)
-    .map(
-      ({
-        platform,
-        distributionCount,
-        totalClicks,
-        totalOrders,
-        totalCommission,
-      }) => {
-        return {
-          id: platform.id,
-          name: platform.name,
-          platformType: platform.platformType,
-          distributionCount,
-          totalClicks,
-          clicksPerDistribution: calculateEfficiency(
-            totalClicks,
-            distributionCount
-          ),
-          totalOrders,
-          cvr: calculateConversionRate(totalOrders, totalClicks),
-          totalCommission,
-          commissionPerDistribution: calculateEfficiency(
-            totalCommission,
-            distributionCount
-          ),
-          epc: calculateEPC(totalCommission, totalClicks),
-        };
-      }
-    )
-    .sort(
-      (a, b) =>
-        b.totalCommission - a.totalCommission ||
-        b.clicksPerDistribution - a.clicksPerDistribution
-    );
+  const contentPerformanceItems = aggregated.contentPerformance;
+  const productAnalyticsItems = aggregated.productAnalytics;
+  const channelEfficiencyItems = aggregated.channelEfficiency;
 
   // ----------------------------------------------------
   // 4. CHARTS: Publishing Trend & Niche Performance
@@ -784,7 +428,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   ].filter((p) => p.count > 0);
 
   // Top performers
-  const topProducts = productAnalyticsItems.slice(0, 5);
+  const topProducts = productAnalyticsItems
+    .filter((p) => !p.isUnallocatedBucket)
+    .slice(0, 5);
   const topPlatforms = channelEfficiencyItems.slice(0, 5).map((ch) => ({
     id: ch.id,
     name: ch.name,

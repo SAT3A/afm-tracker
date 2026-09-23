@@ -6,8 +6,13 @@
  * to support iterative experimentation rather than claiming causal certainty.
  */
 
-import { ANALYTICS_CONFIG } from "./config.ts";
-import { calculateEngagementRate, calculateCTR, calculateConversionRate } from "./metrics.ts";
+import { ANALYTICS_CONFIG, type MetricBasis } from "./config.ts";
+import {
+  calculateEngagementRate,
+  calculateCTR,
+  calculateConversionRate,
+  resolveReach,
+} from "./metrics.ts";
 
 export type DiagnosisStatus =
   | "INSUFFICIENT_DATA"
@@ -19,9 +24,15 @@ export type DiagnosisStatus =
 export interface DiagnosticResult {
   status: DiagnosisStatus;
   badgeLabel: string;
-  badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning";
-  er: number;
-  ctr: number;
+  badgeVariant:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "outline"
+    | "success"
+    | "warning";
+  er: number | null;
+  ctr: number | null;
   cvr: number;
   sampleSufficiency: {
     viewsSufficient: boolean;
@@ -35,9 +46,13 @@ export interface DiagnosticResult {
 
 /**
  * Diagnoses content performance against observable threshold benchmarks.
+ * Evaluates reach according to selected metricBasis (views or impressions).
  */
 export function diagnoseContentPerformance(params: {
+  metricBasis?: MetricBasis;
+  reach?: number | null;
   views?: number | null;
+  impressions?: number | null;
   clicks?: number | null;
   orders?: number | null;
   likes?: number | null;
@@ -45,7 +60,19 @@ export function diagnoseContentPerformance(params: {
   shares?: number | null;
   saves?: number | null;
 }): DiagnosticResult {
-  const views = Math.max(0, Number(params.views) || 0);
+  const basis: MetricBasis =
+    params.metricBasis ||
+    (params.impressions && !params.views ? "impressions" : "views");
+
+  const reach =
+    params.reach != null
+      ? Math.max(0, Number(params.reach) || 0)
+      : resolveReach({
+          metricBasis: basis,
+          views: params.views,
+          impressions: params.impressions,
+        });
+
   const clicks = Math.max(0, Number(params.clicks) || 0);
   const orders = Math.max(0, Number(params.orders) || 0);
 
@@ -56,17 +83,20 @@ export function diagnoseContentPerformance(params: {
       shares: params.shares,
       saves: params.saves,
     },
-    views
+    reach,
+    basis
   );
 
-  const { ctr } = calculateCTR(clicks, views);
+  const { ctr } = calculateCTR(clicks, reach, basis);
   const cvr = calculateConversionRate(orders, clicks);
 
-  const viewsSufficient = views >= ANALYTICS_CONFIG.MIN_VIEWS_FOR_DIAGNOSIS;
-  const clicksSufficientForCVR = clicks >= ANALYTICS_CONFIG.MIN_CLICKS_FOR_CVR_ANALYSIS;
+  const reachSufficient = reach >= ANALYTICS_CONFIG.MIN_REACH_FOR_DIAGNOSIS;
+  const clicksSufficientForCVR =
+    clicks >= ANALYTICS_CONFIG.MIN_CLICKS_FOR_CVR_ANALYSIS;
 
-  // 1. Guard against small sample sizes
-  if (!viewsSufficient) {
+  // 1. Guard against small sample sizes (based on reach, not video views only)
+  if (!reachSufficient) {
+    const reachUnit = basis === "impressions" ? "impresi" : "views";
     return {
       status: "INSUFFICIENT_DATA",
       badgeLabel: "Sample Terbatas",
@@ -75,18 +105,18 @@ export function diagnoseContentPerformance(params: {
       ctr,
       cvr,
       sampleSufficiency: {
-        viewsSufficient,
+        viewsSufficient: reachSufficient,
         clicksSufficientForCVR,
-        currentViews: views,
+        currentViews: reach,
         currentClicks: clicks,
       },
       possibleBottleneck: null,
-      suggestedTest: `Butuh minimal ${ANALYTICS_CONFIG.MIN_VIEWS_FOR_DIAGNOSIS} views untuk diagnosis terpercaya (saat ini: ${views} views).`,
+      suggestedTest: `Butuh minimal ${ANALYTICS_CONFIG.MIN_REACH_FOR_DIAGNOSIS} ${reachUnit} untuk diagnosis terpercaya (saat ini: ${reach} ${reachUnit}).`,
     };
   }
 
-  const isHighER = er >= ANALYTICS_CONFIG.HIGH_ER_THRESHOLD;
-  const isHighCTR = ctr >= ANALYTICS_CONFIG.HIGH_CTR_THRESHOLD;
+  const isHighER = (er ?? 0) >= ANALYTICS_CONFIG.HIGH_ER_THRESHOLD;
+  const isHighCTR = (ctr ?? 0) >= ANALYTICS_CONFIG.HIGH_CTR_THRESHOLD;
 
   // 2. Classify into diagnostic quadrants
   if (isHighER && isHighCTR) {
@@ -97,11 +127,18 @@ export function diagnoseContentPerformance(params: {
       er,
       ctr,
       cvr,
-      sampleSufficiency: { viewsSufficient, clicksSufficientForCVR, currentViews: views, currentClicks: clicks },
-      possibleBottleneck: clicksSufficientForCVR && cvr < ANALYTICS_CONFIG.HIGH_CVR_THRESHOLD
-        ? "Kemungkinan bottleneck: Penawaran di halaman Shopee (harga, rating toko, atau stok) menghambat konversi checkout."
-        : null,
-      suggestedTest: "Konten dan klik sangat kuat. Pertimbangkan menambah frekuensi distribusi atau mengulang creative angle ini.",
+      sampleSufficiency: {
+        viewsSufficient: reachSufficient,
+        clicksSufficientForCVR,
+        currentViews: reach,
+        currentClicks: clicks,
+      },
+      possibleBottleneck:
+        clicksSufficientForCVR && cvr < ANALYTICS_CONFIG.HIGH_CVR_THRESHOLD
+          ? "Kemungkinan bottleneck: Penawaran di halaman Shopee (harga, rating toko, atau stok) menghambat konversi checkout."
+          : null,
+      suggestedTest:
+        "Konten dan klik sangat kuat. Pertimbangkan menambah frekuensi distribusi atau mengulang creative angle ini.",
     };
   }
 
@@ -113,9 +150,16 @@ export function diagnoseContentPerformance(params: {
       er,
       ctr,
       cvr,
-      sampleSufficiency: { viewsSufficient, clicksSufficientForCVR, currentViews: views, currentClicks: clicks },
-      possibleBottleneck: "Kemungkinan bottleneck: Relevansi produk atau kejelasan ajakan bertindak (CTA) kurang kuat dibandingkan daya tarik konten hiburan.",
-      suggestedTest: "Pertimbangkan mengganti kalimat CTA atau memperjelas manfaat produk sebelum audiens selesai menonton.",
+      sampleSufficiency: {
+        viewsSufficient: reachSufficient,
+        clicksSufficientForCVR,
+        currentViews: reach,
+        currentClicks: clicks,
+      },
+      possibleBottleneck:
+        "Kemungkinan bottleneck: Relevansi produk atau kejelasan ajakan bertindak (CTA) kurang kuat dibandingkan daya tarik konten hiburan.",
+      suggestedTest:
+        "Pertimbangkan mengganti kalimat CTA atau memperjelas manfaat produk sebelum audiens selesai menonton/membaca.",
     };
   }
 
@@ -127,9 +171,16 @@ export function diagnoseContentPerformance(params: {
       er,
       ctr,
       cvr,
-      sampleSufficiency: { viewsSufficient, clicksSufficientForCVR, currentViews: views, currentClicks: clicks },
-      possibleBottleneck: "Kemungkinan bottleneck: Jangkauan / reach konten masih terbatas meskipun audiens yang melihat memiliki niat beli tinggi.",
-      suggestedTest: "Audiens sangat tertarik membeli. Uji coba perbanyak sebaran link ke grup/channel lain dengan hook serupa.",
+      sampleSufficiency: {
+        viewsSufficient: reachSufficient,
+        clicksSufficientForCVR,
+        currentViews: reach,
+        currentClicks: clicks,
+      },
+      possibleBottleneck:
+        "Kemungkinan bottleneck: Jangkauan / reach konten masih terbatas meskipun audiens yang melihat memiliki niat beli tinggi.",
+      suggestedTest:
+        "Audiens sangat tertarik membeli. Uji coba perbanyak sebaran link ke grup/channel lain dengan hook serupa.",
     };
   }
 
@@ -140,9 +191,16 @@ export function diagnoseContentPerformance(params: {
     er,
     ctr,
     cvr,
-    sampleSufficiency: { viewsSufficient, clicksSufficientForCVR, currentViews: views, currentClicks: clicks },
-    possibleBottleneck: "Kemungkinan bottleneck: Hook pembuka atau pemilihan angle produk belum memikat perhatian audiens sasaran.",
-    suggestedTest: "Coba ganti 3 detik pertama video (hook) atau uji coba kategori produk berbeda pada slot jadwal berikutnya.",
+    sampleSufficiency: {
+      viewsSufficient: reachSufficient,
+      clicksSufficientForCVR,
+      currentViews: reach,
+      currentClicks: clicks,
+    },
+    possibleBottleneck:
+      "Kemungkinan bottleneck: Hook pembuka atau pemilihan angle produk belum memikat perhatian audiens sasaran.",
+    suggestedTest:
+      "Coba ganti 3 detik pertama video (hook) atau uji coba kategori produk berbeda pada slot jadwal berikutnya.",
   };
 }
 

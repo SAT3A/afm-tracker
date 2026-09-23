@@ -6,9 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Video, Search, ChevronLeft, ChevronRight, ExternalLink, Clock, HelpCircle } from "lucide-react";
+import { Sparkles, Search, ChevronLeft, ChevronRight, ExternalLink, Clock, HelpCircle } from "lucide-react";
 import { formatCompactNumber, formatCurrencyIDR, formatPercentage, formatContentAge } from "@/lib/analytics/metrics";
 import { DiagnosisStatus } from "@/lib/analytics/diagnostics";
+import type { MetricBasis } from "@/lib/analytics/config";
 
 export interface ContentPerformanceItem {
   id: string;
@@ -25,12 +26,13 @@ export interface ContentPerformanceItem {
   saves: number;
   clicks: number;
   orders: number;
-  commission: number;
+  commission: number | null;
   isActualCommission: boolean;
-  er: number;
-  ctr: number;
+  er: number | null;
+  ctr: number | null;
   cvr: number;
   epc: number;
+  metricBasis?: MetricBasis;
   diagnosisStatus: DiagnosisStatus;
   diagnosisBadge: string;
   possibleBottleneck: string | null;
@@ -81,11 +83,11 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-              <Video className="w-4 h-4 text-pink-500" />
-              Performa Konten Video AI
+              <Sparkles className="w-4 h-4 text-pink-500" />
+              Performa Konten Kreatif
             </CardTitle>
             <CardDescription className="text-xs">
-              Analisa kinerja kreatif video, rasio klik affiliate (CTR basis Views), dan estimasi pendapatan.
+              Analisa kinerja kreatif konten multi-format (Shopee Video, Reels, Feed, Threads), rasio klik affiliate (CTR), dan estimasi pendapatan.
             </CardDescription>
           </div>
 
@@ -111,14 +113,14 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
             <Table>
               <TableHeader className="bg-muted/40 text-[11px]">
                 <TableRow>
-                  <TableHead className="font-bold text-foreground min-w-[240px]">Konten Video & Umur</TableHead>
-                  <TableHead className="font-bold text-foreground text-right min-w-[100px]" title="Denominator CTR/ER dihitung berbasis Views (Video Plays)">
-                    Views (Plays)
+                  <TableHead className="font-bold text-foreground min-w-[240px]">Kreatif Konten & Umur</TableHead>
+                  <TableHead className="font-bold text-foreground text-right min-w-[110px]" title="Jangkauan penayangan: Plays untuk video, impresi untuk feed/teks">
+                    Jangkauan
                   </TableHead>
-                  <TableHead className="font-bold text-foreground text-right min-w-[80px]" title="Engagement Rate = (Likes+Comments+Shares+Saves) / Views × 100%">
+                  <TableHead className="font-bold text-foreground text-right min-w-[80px]" title="Engagement Rate = (Likes+Comments+Shares+Saves) / Jangkauan × 100%">
                     ER %
                   </TableHead>
-                  <TableHead className="font-bold text-foreground text-right min-w-[80px]" title="Affiliate CTR = Klik Affiliate / Views × 100%">
+                  <TableHead className="font-bold text-foreground text-right min-w-[80px]" title="Affiliate CTR = Klik Affiliate / Jangkauan × 100%">
                     CTR %
                   </TableHead>
                   <TableHead className="font-bold text-foreground text-right min-w-[80px]">Klik</TableHead>
@@ -126,7 +128,7 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
                   <TableHead className="font-bold text-foreground text-right min-w-[80px]" title="Conversion Rate = Order / Klik × 100%">
                     CVR %
                   </TableHead>
-                  <TableHead className="font-bold text-foreground text-right min-w-[110px]">Estimasi Komisi</TableHead>
+                  <TableHead className="font-bold text-foreground text-right min-w-[110px]">Komisi</TableHead>
                   <TableHead className="font-bold text-foreground text-right min-w-[90px]" title="Earnings Per Click = Komisi / Klik">
                     EPC
                   </TableHead>
@@ -167,7 +169,7 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-primary inline-flex items-center gap-0.5 ml-1"
-                                title="Buka video di platform"
+                                title="Buka tautan konten"
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </a>
@@ -176,9 +178,14 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
                         </div>
                       </TableCell>
 
-                      {/* Views (Basis Plays) */}
+                      {/* Reach (Basis Plays / Impressions) */}
                       <TableCell className="text-right font-medium text-foreground">
-                        {formatCompactNumber(c.views)}
+                        <div className="flex flex-col items-end">
+                          <span>{formatCompactNumber(c.views)}</span>
+                          <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                            {c.metricBasis === "impressions" ? "Impresi" : "Plays"}
+                          </span>
+                        </div>
                       </TableCell>
 
                       {/* ER % */}
@@ -214,14 +221,20 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
 
                       {/* Commission */}
                       <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        <div className="flex items-center justify-end gap-1">
-                          <span>{formatCurrencyIDR(c.commission, true)}</span>
-                          {!c.isActualCommission && (
-                            <span title="Estimasi berbasis produk terkait" className="text-[10px] text-muted-foreground">
-                              (est)
-                            </span>
-                          )}
-                        </div>
+                        {c.commission == null ? (
+                          <span className="text-xs font-normal text-muted-foreground" title="Order multi-produk tanpa actual commission tidak dapat dirata-rata">
+                            N/A
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <span>{formatCurrencyIDR(c.commission, true)}</span>
+                            {!c.isActualCommission && (
+                              <span title="Estimasi berbasis 1 produk terkait" className="text-[10px] text-muted-foreground font-normal">
+                                (est)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* EPC */}
@@ -258,7 +271,7 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
-            <span>* Tanda bintang (*) menandakan sample klik &lt; 20 sehingga rasio CVR masih fluktuatif.</span>
+            <span>* Tanda bintang (*) menandakan sample klik &lt; 20 sehingga rasio CVR masih fluktuatif. N/A pada komisi menandakan konten multi-produk tanpa actual commission tercatat.</span>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">

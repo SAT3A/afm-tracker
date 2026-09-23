@@ -3,17 +3,19 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Filter, Eye, MousePointerClick, ShoppingBag, Coins, Heart, MessageSquare, Share2, Bookmark, Info } from "lucide-react";
 import { formatCompactNumber, formatCurrencyIDR, formatPercentage } from "@/lib/analytics/metrics";
+import type { MetricBasis } from "@/lib/analytics/config";
 
 interface AffiliateFunnelCardProps {
   data: {
     views: number;
     videoViews: number;
     postImpressions: number;
+    reachBasis: MetricBasis;
     clicks: number;
     orders: number;
     commission: number;
     epc: number;
-    ctr: number;
+    ctr: number | null;
     cvr: number;
     engagements: {
       likes: number;
@@ -21,13 +23,14 @@ interface AffiliateFunnelCardProps {
       shares: number;
       saves: number;
       total: number;
-      rate: number;
+      rate: number | null;
     };
   };
 }
 
 export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
   const avgCommissionPerOrder = data.orders > 0 ? Math.round(data.commission / data.orders) : 0;
+  const isMixed = data.reachBasis === "mixed";
 
   return (
     <Card className="border-border bg-card shadow-xs">
@@ -39,7 +42,7 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
               Funnel Konversi Komersial Affiliate
             </CardTitle>
             <CardDescription className="text-xs">
-              Alur konversi dari impresi/views menjadi klik dan pesanan Shopee, dengan interaksi sosial paralel.
+              Alur throughput komersial utama dengan pemisahan interaksi sosial paralel.
             </CardDescription>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg border border-border/80 self-start sm:self-auto">
@@ -59,8 +62,14 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
                 <Eye className="w-3.5 h-3.5 text-blue-500" />
                 1. Jangkauan
               </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted border border-border">
-                Mixed Basis
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                  isMixed
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                {isMixed ? "Mixed Basis" : data.reachBasis === "views" ? "Views Basis" : "Impressions Basis"}
               </span>
             </div>
             <div>
@@ -72,7 +81,7 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
               </p>
             </div>
             <div className="text-[10px] text-muted-foreground/90 border-t border-border/60 pt-1.5">
-              100% Volume Audiens Terjangkau
+              {isMixed ? "Observasi Gabungan" : "100% Volume Audiens Terjangkau"}
             </div>
           </div>
 
@@ -83,8 +92,11 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
                 <MousePointerClick className="w-3.5 h-3.5 text-primary" />
                 2. Klik Affiliate
               </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                CTR: {formatPercentage(data.ctr)}
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+                title={isMixed ? "CTR universal tidak dihitung pada Mixed Basis" : "Affiliate CTR"}
+              >
+                CTR: {isMixed ? "N/A (Mixed Basis)" : formatPercentage(data.ctr)}
               </span>
             </div>
             <div>
@@ -96,7 +108,7 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
               </p>
             </div>
             <div className="text-[10px] text-muted-foreground/90 border-t border-border/60 pt-1.5">
-              Rasio Konversi Jangkauan &rarr; Klik
+              {isMixed ? "CTR dihitung per platform/konten" : "Rasio Konversi Jangkauan → Klik"}
             </div>
           </div>
 
@@ -160,7 +172,7 @@ export function AffiliateFunnelCard({ data }: AffiliateFunnelCardProps) {
                 Resonansi Sosial Paralel (Engagement Metric)
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/10 text-pink-500 border border-pink-500/20">
-                ER: {formatPercentage(data.engagements.rate)}
+                ER: {isMixed ? "N/A (Mixed Basis)" : formatPercentage(data.engagements.rate)}
               </span>
             </div>
             <span className="text-[11px] text-muted-foreground">
