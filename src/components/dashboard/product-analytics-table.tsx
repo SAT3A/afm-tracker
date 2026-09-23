@@ -25,6 +25,7 @@ export interface ProductAnalyticsItem {
   commissionPerDistribution: number;
   epc: number;
   isUnallocatedBucket?: boolean;
+  isEstimatedCommission?: boolean;
 }
 
 interface ProductAnalyticsTableProps {
@@ -170,7 +171,21 @@ export function ProductAnalyticsTable({ products }: ProductAnalyticsTableProps) 
 
                       {/* Total Commission */}
                       <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {p.totalCommission == null ? "N/A" : formatCurrencyIDR(p.totalCommission, true)}
+                        {p.totalCommission == null ? (
+                          "N/A"
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <span>{formatCurrencyIDR(p.totalCommission, true)}</span>
+                            {p.isEstimatedCommission && (
+                              <span
+                                title="Estimasi komisi berbasis (orders × harga × %komisi). Bukan komisi riil tercatat."
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                              >
+                                Estimasi
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* Commission per Distribution */}

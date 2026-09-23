@@ -124,6 +124,7 @@ export interface ProductAnalyticsResult {
   commissionPerDistribution: number;
   epc: number;
   isUnallocatedBucket?: boolean;
+  isEstimatedCommission?: boolean;
 }
 
 export interface ChannelEfficiencyResult {
@@ -140,12 +141,35 @@ export interface ChannelEfficiencyResult {
   epc: number;
 }
 
+export interface SocialResonanceItem {
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  total: number;
+  rate: number | null;
+  basis: MetricBasis;
+}
+
+export interface DistributionResonanceItem {
+  likes: number;
+  shares: number;
+  total: number;
+  rate: number | null;
+  basis: MetricBasis;
+}
+
 export interface AggregationOutput {
   businessOverview: {
     totalReach: number;
     videoViews: number;
     postImpressions: number;
     reachBasis: MetricBasis;
+    hasDistributionData: boolean;
+    dataNotice?: string;
+    // Option A: Separated Social Resonances (No blind summing!)
+    contentEngagement: SocialResonanceItem;
+    distributionEngagement: DistributionResonanceItem;
     totalEngagements: number;
     engagementRate: number | null;
     affiliateClicks: number;
@@ -154,27 +178,23 @@ export interface AggregationOutput {
     conversionRate: number;
     commission: number;
     epc: number;
-    canonicalCommercialSource: "DistributionEngagement" | "ContentMetric";
+    canonicalCommercialSource: "DistributionEngagement";
   };
   affiliateFunnel: {
     reach: number;
     videoViews: number;
     postImpressions: number;
     reachBasis: MetricBasis;
+    hasDistributionData: boolean;
+    dataNotice?: string;
     clicks: number;
     orders: number;
     commission: number;
     epc: number;
     ctr: number | null;
     cvr: number;
-    engagements: {
-      likes: number;
-      comments: number;
-      shares: number;
-      saves: number;
-      total: number;
-      rate: number | null;
-    };
+    engagements: SocialResonanceItem;
+    distributionEngagements: DistributionResonanceItem;
   };
   contentPerformance: ContentPerformanceResult[];
   productAnalytics: ProductAnalyticsResult[];
@@ -222,9 +242,6 @@ export function aggregateDashboardMetrics(params: {
   let totalContentComments = 0;
   let totalContentShares = 0;
   let totalContentSaves = 0;
-  let totalContentClicks = 0;
-  let totalContentOrders = 0;
-  let totalContentCommission = 0;
 
   const contentPerformance: ContentPerformanceResult[] = contents.map((c) => {
     const metric = c.metrics[0];
@@ -242,8 +259,6 @@ export function aggregateDashboardMetrics(params: {
     totalContentComments += comments;
     totalContentShares += shares;
     totalContentSaves += saves;
-    totalContentClicks += clicks;
-    totalContentOrders += orders;
 
     // Commission logic:
     // 1. Prefer actualCommission if present
@@ -268,10 +283,6 @@ export function aggregateDashboardMetrics(params: {
     } else {
       commission = 0;
       isActualCommission = false;
-    }
-
-    if (commission != null) {
-      totalContentCommission += commission;
     }
 
     const basis: MetricBasis =
@@ -368,6 +379,7 @@ export function aggregateDashboardMetrics(params: {
       totalClicks: number;
       totalOrders: number;
       totalCommission: number;
+      hasEstimatedCommission: boolean;
     }
   >();
 
@@ -378,6 +390,7 @@ export function aggregateDashboardMetrics(params: {
       totalClicks: 0,
       totalOrders: 0,
       totalCommission: 0,
+      hasEstimatedCommission: false,
     });
   }
 
@@ -402,11 +415,14 @@ export function aggregateDashboardMetrics(params: {
 
     // Distribution commission resolution
     let distComm = 0;
+    let isDistActualComm = false;
     if (eng?.actualCommission != null) {
       distComm = Number(eng.actualCommission);
+      isDistActualComm = true;
     } else if (orders > 0 && dist.items.length === 1) {
       const p = dist.items[0].product;
       distComm = (orders * Number(p.price) * Number(p.commissionRate)) / 100;
+      isDistActualComm = false;
     }
     totalDistCommission += distComm;
 
@@ -428,6 +444,9 @@ export function aggregateDashboardMetrics(params: {
         pEntry.totalClicks += clicks;
         pEntry.totalOrders += orders;
         pEntry.totalCommission += distComm;
+        if (!isDistActualComm && orders > 0) {
+          pEntry.hasEstimatedCommission = true;
+        }
       }
     } else if (dist.items.length > 1) {
       // Multi-product distribution: Placed into unallocated bucket, NOT multiplied across items!
@@ -463,7 +482,7 @@ export function aggregateDashboardMetrics(params: {
     singleProductMap.values()
   )
     .filter((p) => p.distributionCount > 0)
-    .map(({ product, distributionCount, totalClicks, totalOrders, totalCommission }) => {
+    .map(({ product, distributionCount, totalClicks, totalOrders, totalCommission, hasEstimatedCommission }) => {
       return {
         id: product.id,
         productName: product.productName,
@@ -480,6 +499,7 @@ export function aggregateDashboardMetrics(params: {
         totalCommission,
         commissionPerDistribution: calculateEfficiency(totalCommission, distributionCount),
         epc: calculateEPC(totalCommission, totalClicks),
+        isEstimatedCommission: hasEstimatedCommission,
       };
     })
     .sort((a, b) => (b.totalCommission ?? 0) - (a.totalCommission ?? 0) || b.totalClicks - a.totalClicks);
@@ -507,23 +527,22 @@ export function aggregateDashboardMetrics(params: {
   }
 
   // -------------------------------------------------------------------------
-  // 3. BUSINESS OVERVIEW & AFFILIATE FUNNEL (Canonical Commercial Selection)
+  // 3. BUSINESS OVERVIEW & AFFILIATE FUNNEL (Canonical Commercial Throughput)
   // -------------------------------------------------------------------------
-  // Rule: Do NOT sum ContentMetric and DistributionEngagement clicks/orders!
-  // If distributions exist, DistributionEngagement is the canonical commercial throughput.
-  // If zero distributions exist (e.g. Case A: Content-only), fallback to ContentMetric.
-  const hasDistributions = distributions.length > 0;
-  const canonicalCommercialSource = hasDistributions
-    ? "DistributionEngagement"
-    : "ContentMetric";
+  // Rule: Do NOT make the semantic definition of Business Overview commercial KPIs
+  // change depending on whether distributions exist.
+  // Stable Canonical Source: DistributionEngagement
+  // If no attributed Distribution data exists, show 0 / N/A with notice "Belum ada data distribusi teratribusi."
+  const hasDistributionData = distributions.length > 0;
+  const canonicalCommercialSource = "DistributionEngagement" as const;
+  const dataNotice = !hasDistributionData
+    ? "Belum ada data distribusi teratribusi."
+    : undefined;
 
-  const affiliateClicks = hasDistributions
-    ? totalDistClicks
-    : totalContentClicks;
-  const orders = hasDistributions ? totalDistOrders : totalContentOrders;
-  const commission = hasDistributions
-    ? totalDistCommission
-    : totalContentCommission;
+  // Commercial KPIs are strictly derived from DistributionEngagement (never fallback to ContentMetric)
+  const affiliateClicks = totalDistClicks;
+  const orders = totalDistOrders;
+  const commission = totalDistCommission;
 
   // Total Reach Observation (Informational aggregate)
   const totalReach = totalVideoViews + totalPostImpressions;
@@ -536,26 +555,67 @@ export function aggregateDashboardMetrics(params: {
     reachBasis = "views";
   }
 
-  // Parallel Social Interactions
-  const totalLikes = totalContentLikes + totalDistLikes;
-  const totalComments = totalContentComments;
-  const totalShares = totalContentShares + totalDistShares;
-  const totalSaves = totalContentSaves;
-  const totalEngagements = totalLikes + totalComments + totalShares + totalSaves;
+  // -------------------------------------------------------------------------
+  // SOCIAL ENGAGEMENT (Option A: Separated without Blind Summing)
+  // -------------------------------------------------------------------------
+  // 1. Content Social Engagement (from ContentMetric)
+  const contentLikes = totalContentLikes;
+  const contentComments = totalContentComments;
+  const contentShares = totalContentShares;
+  const contentSaves = totalContentSaves;
+  const totalContentEngagements =
+    contentLikes + contentComments + contentShares + contentSaves;
+  const contentER =
+    totalVideoViews > 0
+      ? calculateEngagementRate(totalContentEngagements, totalVideoViews, "views").rate
+      : 0;
 
-  // When reachBasis is "mixed", CTR and ER MUST NOT be calculated on a mixed denominator!
-  const engagementRate =
-    reachBasis === "mixed"
-      ? null
-      : calculateEngagementRate(totalEngagements, totalReach, reachBasis).rate;
+  const contentEngagement: SocialResonanceItem = {
+    likes: contentLikes,
+    comments: contentComments,
+    shares: contentShares,
+    saves: contentSaves,
+    total: totalContentEngagements,
+    rate: contentER,
+    basis: "views",
+  };
 
+  // 2. Distribution Social Engagement (from DistributionEngagement placements)
+  const distLikes = totalDistLikes;
+  const distShares = totalDistShares;
+  const totalDistEngagements = distLikes + distShares;
+  const distER =
+    totalPostImpressions > 0
+      ? calculateEngagementRate(totalDistEngagements, totalPostImpressions, "impressions").rate
+      : 0;
+
+  const distributionEngagement: DistributionResonanceItem = {
+    likes: distLikes,
+    shares: distShares,
+    total: totalDistEngagements,
+    rate: distER,
+    basis: "impressions",
+  };
+
+  // When reachBasis is "mixed" or no distribution data, affiliate CTR is guarded:
   const affiliateCTR =
-    reachBasis === "mixed"
+    !hasDistributionData || reachBasis === "mixed"
       ? null
       : calculateCTR(affiliateClicks, totalReach, reachBasis).ctr;
 
-  const conversionRate = calculateConversionRate(orders, affiliateClicks);
-  const epc = calculateEPC(commission, affiliateClicks);
+  const conversionRate = hasDistributionData
+    ? calculateConversionRate(orders, affiliateClicks)
+    : 0;
+  const epc = hasDistributionData
+    ? calculateEPC(commission, affiliateClicks)
+    : 0;
+
+  const universalER =
+    reachBasis === "mixed"
+      ? null
+      : reachBasis === "views"
+      ? contentER
+      : distER;
 
   return {
     businessOverview: {
@@ -563,8 +623,12 @@ export function aggregateDashboardMetrics(params: {
       videoViews: totalVideoViews,
       postImpressions: totalPostImpressions,
       reachBasis,
-      totalEngagements,
-      engagementRate,
+      hasDistributionData,
+      dataNotice,
+      contentEngagement,
+      distributionEngagement,
+      totalEngagements: totalContentEngagements,
+      engagementRate: universalER,
       affiliateClicks,
       affiliateCTR,
       orders,
@@ -578,20 +642,16 @@ export function aggregateDashboardMetrics(params: {
       videoViews: totalVideoViews,
       postImpressions: totalPostImpressions,
       reachBasis,
+      hasDistributionData,
+      dataNotice,
       clicks: affiliateClicks,
       orders,
       commission,
       epc,
       ctr: affiliateCTR,
       cvr: conversionRate,
-      engagements: {
-        likes: totalLikes,
-        comments: totalComments,
-        shares: totalShares,
-        saves: totalSaves,
-        total: totalEngagements,
-        rate: engagementRate,
-      },
+      engagements: contentEngagement,
+      distributionEngagements: distributionEngagement,
     },
     contentPerformance,
     productAnalytics,

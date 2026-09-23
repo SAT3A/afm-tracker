@@ -226,11 +226,14 @@ export function ContentPerformanceTable({ contents }: ContentPerformanceTablePro
                             N/A
                           </span>
                         ) : (
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             <span>{formatCurrencyIDR(c.commission, true)}</span>
                             {!c.isActualCommission && (
-                              <span title="Estimasi berbasis 1 produk terkait" className="text-[10px] text-muted-foreground font-normal">
-                                (est)
+                              <span
+                                title="Estimasi komisi berbasis produk tunggal (orders × harga × %komisi). Bukan komisi riil tercatat."
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                              >
+                                Estimasi
                               </span>
                             )}
                           </div>

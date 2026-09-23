@@ -163,13 +163,26 @@ test("CASE A - Single content, no distributions", () => {
     allPlatforms: [platformFB],
   });
 
-  // When distributions are 0, commercial fallback is ContentMetric
-  assert.equal(result.businessOverview.canonicalCommercialSource, "ContentMetric");
-  assert.equal(result.businessOverview.affiliateClicks, 50);
-  assert.equal(result.businessOverview.orders, 5);
-  assert.equal(result.businessOverview.commission, 50000);
-  assert.equal(result.businessOverview.conversionRate, 10.0);
-  assert.equal(result.businessOverview.epc, 1000);
+  // When distributions are 0, canonical source remains stable: DistributionEngagement (NO fallback)
+  assert.equal(result.businessOverview.canonicalCommercialSource, "DistributionEngagement");
+  assert.equal(result.businessOverview.hasDistributionData, false);
+  assert.equal(result.businessOverview.dataNotice, "Belum ada data distribusi teratribusi.");
+  assert.equal(result.businessOverview.affiliateClicks, 0, "No distribution data means 0 attributed clicks on Overview");
+  assert.equal(result.businessOverview.orders, 0, "No distribution data means 0 attributed orders on Overview");
+  assert.equal(result.businessOverview.commission, 0, "No distribution data means 0 attributed commission on Overview");
+  assert.equal(result.businessOverview.affiliateCTR, null, "CTR is null when no distribution data exists");
+
+  // Content-level commercial metrics remain 100% visible in Content Performance table:
+  assert.equal(result.contentPerformance[0].clicks, 50);
+  assert.equal(result.contentPerformance[0].orders, 5);
+  assert.equal(result.contentPerformance[0].commission, 50000);
+  assert.equal(result.contentPerformance[0].cvr, 10.0);
+  assert.equal(result.contentPerformance[0].epc, 1000);
+
+  // Option A: Separated Social Resonances
+  assert.equal(result.businessOverview.contentEngagement.total, 140);
+  assert.equal(result.businessOverview.contentEngagement.rate, 7.0); // 140 / 2000 views
+  assert.equal(result.businessOverview.distributionEngagement.total, 0);
 });
 
 // =========================================================================
@@ -416,8 +429,11 @@ test("CASE G & H - Homogeneous Views or Impressions basis calculates exact CTR a
   });
 
   assert.equal(resG.businessOverview.reachBasis, "views");
-  assert.equal(resG.businessOverview.affiliateCTR, 2.0);
-  assert.equal(resG.businessOverview.engagementRate, 4.0);
+  assert.equal(resG.businessOverview.hasDistributionData, false);
+  assert.equal(resG.businessOverview.affiliateCTR, null, "CTR is null when no distribution data exists");
+  assert.equal(resG.businessOverview.contentEngagement.rate, 4.0);
+  assert.equal(resG.contentPerformance[0].ctr, 2.0);
+  assert.equal(resG.contentPerformance[0].er, 4.0);
 
   // Case H: Homogeneous impressions
   const impDist = {
@@ -514,4 +530,95 @@ test("normalizePlatformToContentTypes - maps parent platform correctly", () => {
   assert.deepEqual(normalizePlatformToContentTypes("instagram"), ["ig_reels", "instagram"]);
   assert.deepEqual(normalizePlatformToContentTypes("shopee"), ["shopee_video", "shopee"]);
   assert.deepEqual(normalizePlatformToContentTypes("tiktok"), ["tiktok"]);
+});
+
+// =========================================================================
+// OPTION A: SEPARATED SOCIAL ENGAGEMENT (NO BLIND SUMMING)
+// =========================================================================
+test("OPTION A - Separated Social Engagement without blind summing", () => {
+  const content = {
+    id: "c-social",
+    title: "Video with Organic Engagement",
+    contentType: "tiktok",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 1000, likesCount: 40, commentsCount: 10, sharesCount: 5, savesCount: 5 }],
+  };
+
+  const dist = {
+    id: "d-social",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 15, sharesCount: 5, clicksCount: 10, ordersCount: 1 }],
+  };
+
+  const result = aggregateDashboardMetrics({
+    contents: [content],
+    distributions: [dist],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  const bo = result.businessOverview;
+  // Content engagement is strictly 40+10+5+5 = 60
+  assert.equal(bo.contentEngagement.total, 60);
+  assert.equal(bo.contentEngagement.likes, 40);
+  assert.equal(bo.contentEngagement.comments, 10);
+  assert.equal(bo.contentEngagement.shares, 5);
+  assert.equal(bo.contentEngagement.saves, 5);
+  assert.equal(bo.contentEngagement.rate, 6.0); // 60 / 1000 views
+  assert.equal(bo.contentEngagement.basis, "views");
+
+  // Distribution engagement is strictly 15+5 = 20
+  assert.equal(bo.distributionEngagement.total, 20);
+  assert.equal(bo.distributionEngagement.likes, 15);
+  assert.equal(bo.distributionEngagement.shares, 5);
+  assert.equal(bo.distributionEngagement.rate, 4.0); // 20 / 500 impressions
+  assert.equal(bo.distributionEngagement.basis, "impressions");
+
+  // They are NOT merged into an unjustified blind sum
+  assert.notEqual(bo.contentEngagement.total, bo.contentEngagement.total + bo.distributionEngagement.total);
+});
+
+// =========================================================================
+// STABLE CANONICAL SOURCE: ZERO DISTRIBUTION DATA STATE
+// =========================================================================
+test("STABLE CANONICAL SOURCE - Zero distributions shows 0 / N/A with notice", () => {
+  const content = {
+    id: "c-nodist",
+    title: "Content with organic clicks but zero distributions",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 1000, likesCount: 10, commentsCount: 0, sharesCount: 0, clicksCount: 88, ordersCount: 8, actualCommission: 100000 }],
+  };
+
+  const result = aggregateDashboardMetrics({
+    contents: [content],
+    distributions: [],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  const bo = result.businessOverview;
+  assert.equal(bo.canonicalCommercialSource, "DistributionEngagement");
+  assert.equal(bo.hasDistributionData, false);
+  assert.equal(bo.dataNotice, "Belum ada data distribusi teratribusi.");
+  assert.equal(bo.affiliateClicks, 0);
+  assert.equal(bo.orders, 0);
+  assert.equal(bo.commission, 0);
+  assert.equal(bo.affiliateCTR, null);
+  assert.equal(bo.conversionRate, 0);
+  assert.equal(bo.epc, 0);
+
+  // But content performance table still displays content metrics
+  assert.equal(result.contentPerformance[0].clicks, 88);
+  assert.equal(result.contentPerformance[0].orders, 8);
+  assert.equal(result.contentPerformance[0].commission, 100000);
 });
