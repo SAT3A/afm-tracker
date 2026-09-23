@@ -32,7 +32,6 @@ import {
   Tag,
   LogOut,
   PanelLeft,
-  ChevronsUpDown,
   User,
   ShieldCheck,
   Mail,
@@ -139,42 +138,37 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <header className="sticky top-0 z-30 bg-card/90 backdrop-blur-md border-b border-border transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Left Header Section: Acme-style Workspace Card + Separator + PanelLeft Trigger */}
-            <div className="flex items-center">
-              {/* Workspace / Brand Card */}
-              <Link
-                href="/"
-                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-muted/70 active:scale-98 transition-all group"
-                title="AFM Tracker Enterprise - Ke Dashboard"
-              >
-                <div className="w-8 h-8 rounded-lg bg-foreground text-background dark:bg-zinc-800 dark:text-zinc-100 dark:border dark:border-zinc-700/60 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <span className="font-bold text-sm tracking-tight text-foreground leading-tight group-hover:text-primary transition-colors">
-                    AFM Tracker
-                  </span>
-                  <span className="text-[11px] text-muted-foreground leading-tight">
-                    Enterprise
-                  </span>
-                </div>
-                <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground/70 ml-0.5 group-hover:text-foreground transition-colors" />
-              </Link>
-
-              {/* Thin Vertical Separator */}
-              <div className="h-6 w-[1px] bg-border mx-2 sm:mx-3" />
-
-              {/* Sidebar Trigger Button (PanelLeft Icon) */}
+            {/* Left Header Section:
+                1. Tombol trigger sidebar (PanelLeft)
+                2. AFM Tracker (tanpa enterprise)
+                3. Logo spark biru (tanpa garis pemisah)
+            */}
+            <div className="flex items-center gap-2.5">
+              {/* 1. Tombol Trigger Sidebar (menggantikan posisi logo di paling kiri) */}
               <button
                 type="button"
                 onClick={() => setSidebarOpen((prev) => !prev)}
                 className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
-                title="Aktifkan Sidebar (PanelLeft)"
+                title="Buka / Tutup Sidebar"
                 aria-label="Toggle Sidebar Navigasi"
                 aria-expanded={sidebarOpen}
               >
                 <PanelLeft className="w-4 h-4" />
               </button>
+
+              {/* 2. AFM Tracker + 3. Logo spark warna biru (tanpa garis pemisah & tanpa enterprise) */}
+              <Link
+                href="/"
+                className="flex items-center gap-2.5 px-1 py-1 rounded-xl hover:opacity-90 active:scale-98 transition-all group"
+                title="AFM Tracker - Ke Dashboard"
+              >
+                <span className="font-bold text-base sm:text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+                  AFM Tracker
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 group-hover:scale-105 group-hover:shadow-primary/40 transition-all">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+              </Link>
             </div>
 
             {/* Right Header Actions */}
@@ -259,21 +253,15 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          {/* Sidebar Header with Acme-style branding & PanelLeft toggle to close */}
+          {/* Sidebar Header with blue Sparkles logo + AFM Tracker + PanelLeft close toggle */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-foreground text-background dark:bg-zinc-800 dark:text-zinc-100 dark:border dark:border-zinc-700/60 flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <div className="flex flex-col text-left">
-                <span className="font-bold text-sm tracking-tight text-foreground leading-tight">
-                  AFM Tracker
-                </span>
-                <span className="text-[11px] text-muted-foreground leading-tight">
-                  Enterprise
-                </span>
-              </div>
-              <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground/70 ml-0.5" />
+              <span className="font-bold text-base tracking-tight text-foreground">
+                AFM Tracker
+              </span>
             </div>
 
             <Button
