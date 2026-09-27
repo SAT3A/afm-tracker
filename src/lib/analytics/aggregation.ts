@@ -281,6 +281,41 @@ export function normalizePlatformToContentTypes(platform: string): string[] {
 }
 
 /**
+ * Safely extracts the latest engagement snapshot for a distribution by capturedAt/createdAt.
+ * Avoids assuming array ordering and prevents double-counting cumulative metric snapshots.
+ */
+export function getLatestDistributionEngagement<
+  T extends {
+    capturedAt?: Date | string | null;
+    createdAt?: Date | string | null;
+    viewsCount?: number;
+    clicksCount?: number;
+    ordersCount?: number | null;
+    actualCommission?: number | string | null;
+    likesCount?: number;
+    sharesCount?: number;
+    metricBasis?: MetricBasis;
+  }
+>(engagements?: T[] | null): T | null {
+  if (!engagements || engagements.length === 0) return null;
+  if (engagements.length === 1) return engagements[0];
+
+  return engagements.reduce((latest, current) => {
+    const latestTime = latest.capturedAt
+      ? new Date(latest.capturedAt).getTime()
+      : latest.createdAt
+      ? new Date(latest.createdAt).getTime()
+      : 0;
+    const currentTime = current.capturedAt
+      ? new Date(current.capturedAt).getTime()
+      : current.createdAt
+      ? new Date(current.createdAt).getTime()
+      : 0;
+    return currentTime >= latestTime ? current : latest;
+  }, engagements[0]);
+}
+
+/**
  * Centralized, pure aggregation function.
  * Enforces canonical attribution rules without heuristic or fuzzy deduplication.
  */
@@ -295,11 +330,15 @@ export function aggregateDashboardMetrics(params: {
   // -------------------------------------------------------------------------
   // 1. CONTENT PERFORMANCE (Canonical: Content + ContentMetric)
   // -------------------------------------------------------------------------
-  let totalVideoViews = 0;
+  let totalContentVideoViews = 0;
+  let totalContentImpressions = 0;
   let totalContentLikes = 0;
   let totalContentComments = 0;
   let totalContentShares = 0;
   let totalContentSaves = 0;
+
+  let hasViewsContent = false;
+  let hasImpressionsContent = false;
 
   const contentPerformance: ContentPerformanceResult[] = contents.map((c) => {
     const metric = c.metrics[0];
@@ -312,7 +351,15 @@ export function aggregateDashboardMetrics(params: {
     const orders = metric?.ordersCount || 0;
     const totalEng = likes + comments + shares + saves;
 
-    totalVideoViews += views;
+    const basis: MetricBasis = getContentMetricBasis(c.contentType);
+    if (basis === "views") {
+      hasViewsContent = true;
+      totalContentVideoViews += views;
+    } else {
+      hasImpressionsContent = true;
+      totalContentImpressions += views;
+    }
+
     totalContentLikes += likes;
     totalContentComments += comments;
     totalContentShares += shares;
@@ -342,13 +389,6 @@ export function aggregateDashboardMetrics(params: {
       commission = 0;
       isActualCommission = false;
     }
-
-    const basis: MetricBasis =
-      c.contentType.includes("video") ||
-      c.contentType.includes("reels") ||
-      c.contentType.includes("tiktok")
-        ? "views"
-        : "impressions";
 
     const er = calculateEngagementRate(totalEng, views, basis).rate;
     const ctr = calculateCTR(clicks, views, basis).ctr;
@@ -458,7 +498,7 @@ export function aggregateDashboardMetrics(params: {
   let unallocatedDistCount = 0;
 
   for (const dist of distributions) {
-    const eng = dist.engagements[0];
+    const eng = getLatestDistributionEngagement(dist.engagements);
     const views = eng?.viewsCount || 0;
     const likes = eng?.likesCount || 0;
     const shares = eng?.sharesCount || 0;
@@ -609,11 +649,17 @@ export function aggregateDashboardMetrics(params: {
   const commission = totalDistCommission;
 
   // Total Reach Observation (Informational aggregate)
-  const totalReach = totalVideoViews + totalPostImpressions;
+  const totalVideoViews = totalContentVideoViews;
+  const totalContentReach = totalContentVideoViews + totalContentImpressions;
+  const totalReach = totalContentReach + totalPostImpressions;
+
   let reachBasis: MetricBasis = "views";
-  if (totalVideoViews > 0 && totalPostImpressions > 0) {
+  const hasViewsBasis = totalContentVideoViews > 0;
+  const hasImpressionsBasis = totalContentImpressions > 0 || totalPostImpressions > 0;
+
+  if (hasViewsBasis && hasImpressionsBasis) {
     reachBasis = "mixed";
-  } else if (totalPostImpressions > 0) {
+  } else if (hasImpressionsBasis) {
     reachBasis = "impressions";
   } else {
     reachBasis = "views";
@@ -629,10 +675,28 @@ export function aggregateDashboardMetrics(params: {
   const contentSaves = totalContentSaves;
   const totalContentEngagements =
     contentLikes + contentComments + contentShares + contentSaves;
-  const contentER =
-    totalVideoViews > 0
-      ? calculateEngagementRate(totalContentEngagements, totalVideoViews, "views").rate
-      : 0;
+
+  let contentBasis: MetricBasis = "views";
+  let contentER: number | null = null;
+  if (hasViewsContent && hasImpressionsContent) {
+    contentBasis = "mixed";
+    contentER = null;
+  } else if (hasImpressionsContent) {
+    contentBasis = "impressions";
+    contentER =
+      totalContentImpressions > 0
+        ? calculateEngagementRate(totalContentEngagements, totalContentImpressions, "impressions").rate
+        : 0;
+  } else if (hasViewsContent) {
+    contentBasis = "views";
+    contentER =
+      totalContentVideoViews > 0
+        ? calculateEngagementRate(totalContentEngagements, totalContentVideoViews, "views").rate
+        : 0;
+  } else {
+    contentBasis = "views";
+    contentER = 0;
+  }
 
   const contentEngagement: SocialResonanceItem = {
     likes: contentLikes,
@@ -641,7 +705,7 @@ export function aggregateDashboardMetrics(params: {
     saves: contentSaves,
     total: totalContentEngagements,
     rate: contentER,
-    basis: "views",
+    basis: contentBasis,
   };
 
   // 2. Distribution Social Engagement (from DistributionEngagement placements)
@@ -675,7 +739,7 @@ export function aggregateDashboardMetrics(params: {
     : 0;
 
   const universalER =
-    reachBasis === "mixed"
+    reachBasis === "mixed" || contentBasis === "mixed"
       ? null
       : reachBasis === "views"
       ? contentER
@@ -881,35 +945,17 @@ export function aggregateContentDistributionBreakdown(params: {
     const reachBasis = resolveDistributionReachBasis(dist, content);
     basesEncountered.add(reachBasis);
 
-    const distReach = (dist.engagements || []).reduce(
-      (sum, e) => sum + (Number(e.viewsCount) || 0),
-      0
-    );
-    const distClicks = (dist.engagements || []).reduce(
-      (sum, e) => sum + (Number(e.clicksCount) || 0),
-      0
-    );
-    const distOrders = (dist.engagements || []).reduce(
-      (sum, e) => sum + (Number(e.ordersCount) || 0),
-      0
-    );
+    const latestEng = getLatestDistributionEngagement(dist.engagements);
+    const distReach = Number(latestEng?.viewsCount) || 0;
+    const distClicks = Number(latestEng?.clicksCount) || 0;
+    const distOrders = Number(latestEng?.ordersCount) || 0;
 
     // Commission & provenance for this individual distribution
     let distCommission: number | null = null;
     let distProvenance: CommissionProvenance = "UNAVAILABLE";
 
-    let actualSum = 0;
-    let hasActualEngagement = false;
-
-    for (const e of dist.engagements || []) {
-      if (e.actualCommission != null && e.actualCommission !== "") {
-        hasActualEngagement = true;
-        actualSum += Number(e.actualCommission);
-      }
-    }
-
-    if (hasActualEngagement) {
-      distCommission = actualSum;
+    if (latestEng?.actualCommission != null && latestEng.actualCommission !== "") {
+      distCommission = Number(latestEng.actualCommission);
       distProvenance = "ACTUAL";
     } else if (distOrders === 0) {
       distCommission = 0;
@@ -1036,7 +1082,11 @@ export function aggregateContentDistributionBreakdown(params: {
       : calculateCTR(totalClicks, totalReach, summaryReachBasis).ctr;
   const overallCvr = calculateConversionRate(totalOrders, totalClicks);
   const overallEpc =
-    totalCommission != null ? calculateEPC(totalCommission, totalClicks) : null;
+    summaryProvenance === "PARTIAL" || summaryProvenance === "UNAVAILABLE"
+      ? null
+      : totalCommission != null
+      ? calculateEPC(totalCommission, totalClicks)
+      : null;
 
   return {
     contentId: content.id,

@@ -133,6 +133,7 @@ export function DistributionFormModal({
   // Product search filter in modal
   const [productSearch, setProductSearch] = useState("");
   const [platformSearch, setPlatformSearch] = useState("");
+  const [showAllPersonaContent, setShowAllPersonaContent] = useState(false);
 
   // Duplicate check state
   const [duplicates, setDuplicates] = useState<DuplicateCheckResult[]>([]);
@@ -177,7 +178,9 @@ export function DistributionFormModal({
   // Synchronize form states when distributionToEdit changes or modal opens
   useEffect(() => {
     if (open) {
-      setPersonaId(distributionToEdit?.persona.id || personas[0]?.id || "");
+      const activePersonaId =
+        distributionToEdit?.persona.id || personas[0]?.id || "";
+      setPersonaId(activePersonaId);
       setContentId(distributionToEdit?.contentId || "");
       setDistributionType(
         (distributionToEdit?.distributionType as "post" | "comment") || "comment"
@@ -193,9 +196,19 @@ export function DistributionFormModal({
       setBatchPlatformIds([]);
       setProductSearch("");
       setPlatformSearch("");
+      if (distributionToEdit?.contentId) {
+        const belongsToCurrentPersona = contents.some(
+          (c) =>
+            c.id === distributionToEdit.contentId &&
+            c.personaId === activePersonaId
+        );
+        setShowAllPersonaContent(!belongsToCurrentPersona);
+      } else {
+        setShowAllPersonaContent(false);
+      }
       setErrorMsg(null);
     }
-  }, [distributionToEdit, open, personas, platforms]);
+  }, [distributionToEdit, open, personas, platforms, contents]);
 
   const toggleProduct = (pId: string) => {
     if (selectedProductIds.includes(pId)) {
@@ -234,6 +247,11 @@ export function DistributionFormModal({
       p.name.toLowerCase().includes(platformSearch.toLowerCase()) ||
       p.category.toLowerCase().includes(platformSearch.toLowerCase())
   );
+
+  const personaContents = contents.filter((c) => c.personaId === personaId);
+  const hasOtherPersonaContents = contents.some((c) => c.personaId !== personaId);
+  const visibleContents =
+    showAllPersonaContent || !personaId ? contents : personaContents;
 
   const selectedContent = contents.find((c) => c.id === contentId);
 
@@ -537,9 +555,17 @@ export function DistributionFormModal({
                 <Video className="w-3.5 h-3.5 text-primary" />
                 Materi Konten Kreatif (Opsional)
               </Label>
-              <span className="text-[11px] text-muted-foreground">
-                Kaitkan materi video / post ke sebaran ini
-              </span>
+              {hasOtherPersonaContents && personaId && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllPersonaContent(!showAllPersonaContent)}
+                  className="text-[11px] text-primary hover:underline font-medium"
+                >
+                  {showAllPersonaContent
+                    ? "Saring persona ini"
+                    : `Lihat semua konten (${contents.length})`}
+                </button>
+              )}
             </div>
 
             <select
@@ -548,12 +574,26 @@ export function DistributionFormModal({
               className="w-full h-9 px-3 text-xs rounded-md border border-border bg-background outline-none focus:border-primary font-medium"
             >
               <option value="">-- Tanpa Konten Kreatif (Sebar Link Langsung) --</option>
-              {contents.map((c) => (
+              {visibleContents.map((c) => (
                 <option key={c.id} value={c.id}>
                   [{c.contentType.toUpperCase()}] {c.title}
+                  {showAllPersonaContent && c.personaName ? ` — ${c.personaName}` : ""}
                 </option>
               ))}
             </select>
+
+            {!showAllPersonaContent && personaContents.length === 0 && contents.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Belum ada konten untuk persona ini.{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowAllPersonaContent(true)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Tampilkan konten dari semua persona
+                </button>
+              </p>
+            )}
 
             {/* Non-intrusive Product Pre-selection Helper (Guardrail 4) */}
             {selectedContent &&

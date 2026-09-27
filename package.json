@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/analytics/*.test.mjs",
+    "test": "node --experimental-strip-types --test src/lib/analytics/*.test.mjs",
     "postinstall": "prisma generate",
     "prisma": "prisma"
   },

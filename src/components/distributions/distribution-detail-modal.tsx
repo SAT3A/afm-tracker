@@ -80,10 +80,12 @@ export function DistributionDetailModal({
   const [engShares, setEngShares] = useState("");
   const [engClicks, setEngClicks] = useState("");
   const [engOrders, setEngOrders] = useState("");
+  const [engActualCommission, setEngActualCommission] = useState("");
   const [engError, setEngError] = useState<string | null>(null);
 
   // Link content state
   const [selectedContentIdToLink, setSelectedContentIdToLink] = useState("");
+  const [showAllLinkContents, setShowAllLinkContents] = useState(false);
 
   if (!distribution) return null;
 
@@ -135,6 +137,7 @@ export function DistributionDetailModal({
     formData.append("sharesCount", engShares || "0");
     formData.append("clicksCount", engClicks || "0");
     if (engOrders) formData.append("ordersCount", engOrders);
+    if (engActualCommission) formData.append("actualCommission", engActualCommission);
     formData.append("capturedAt", new Date().toISOString());
 
     startTransition(async () => {
@@ -146,6 +149,7 @@ export function DistributionDetailModal({
         setEngShares("");
         setEngClicks("");
         setEngOrders("");
+        setEngActualCommission("");
         router.refresh();
       } else {
         setEngError(res.message || "Gagal menyimpan engagement.");
@@ -342,31 +346,55 @@ export function DistributionDetailModal({
                   Distribusi ini dicatat sebagai sebaran link mandiri tanpa konten video/postingan kreatif.
                 </p>
 
-                {contents && contents.length > 0 && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <select
-                      value={selectedContentIdToLink}
-                      onChange={(e) => setSelectedContentIdToLink(e.target.value)}
-                      className="flex-1 h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground outline-none focus:border-primary"
-                    >
-                      <option value="">-- Pilih konten untuk dihubungkan --</option>
-                      {contents.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          [{c.contentType.toUpperCase()}] {c.title}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      disabled={isPending || !selectedContentIdToLink}
-                      onClick={() => handleLinkContent(selectedContentIdToLink)}
-                      className="h-8 text-xs gap-1 bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
-                    >
-                      <Link2 className="w-3 h-3" />
-                      Hubungkan Konten
-                    </Button>
-                  </div>
-                )}
+                {contents && contents.length > 0 && (() => {
+                  const personaLinkContents = contents.filter((c) => c.personaId === distribution.persona.id);
+                  const hasOtherLinkContents = contents.some((c) => c.personaId !== distribution.persona.id);
+                  const visibleLinkContents = showAllLinkContents
+                    ? contents
+                    : (personaLinkContents.length > 0 ? personaLinkContents : contents);
+
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      {hasOtherLinkContents && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllLinkContents(!showAllLinkContents)}
+                            className="text-[10px] text-primary hover:underline font-medium"
+                          >
+                            {showAllLinkContents
+                              ? `Saring konten ${distribution.persona.name}`
+                              : `Lihat semua konten (${contents.length})`}
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedContentIdToLink}
+                          onChange={(e) => setSelectedContentIdToLink(e.target.value)}
+                          className="flex-1 h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground outline-none focus:border-primary"
+                        >
+                          <option value="">-- Pilih konten untuk dihubungkan --</option>
+                          {visibleLinkContents.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              [{c.contentType.toUpperCase()}] {c.title}
+                              {showAllLinkContents && c.personaName ? ` — ${c.personaName}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          disabled={isPending || !selectedContentIdToLink}
+                          onClick={() => handleLinkContent(selectedContentIdToLink)}
+                          className="h-8 text-xs gap-1 bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                        >
+                          <Link2 className="w-3 h-3" />
+                          Hubungkan Konten
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -565,17 +593,36 @@ export function DistributionDetailModal({
               </div>
             </div>
 
-            {/* Estimated Earnings Card */}
-            {estimatedEarnings > 0 && (
+            {/* Commission / Earnings Card: Clearly Distinguish Actual vs Estimated Commission */}
+            {latestEng?.actualCommission != null ? (
               <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                  Estimasi Komisi dari Sebaran Ini:
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                    Komisi Aktual dari Sebaran Ini:
+                  </span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                    Aktual
+                  </span>
+                </div>
                 <span className="font-extrabold text-emerald-600 dark:text-emerald-300">
+                  Rp {Math.round(Number(latestEng.actualCommission)).toLocaleString("id-ID")}
+                </span>
+              </div>
+            ) : estimatedEarnings > 0 ? (
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-amber-700 dark:text-amber-400 font-medium">
+                    Estimasi Komisi dari Sebaran Ini:
+                  </span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    Estimasi
+                  </span>
+                </div>
+                <span className="font-extrabold text-amber-600 dark:text-amber-300">
                   Rp {Math.round(estimatedEarnings).toLocaleString("id-ID")}
                 </span>
               </div>
-            )}
+            ) : null}
 
             {/* Add Engagement Form */}
             {showAddEngagement && (
@@ -593,7 +640,7 @@ export function DistributionDetailModal({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[11px]">Views</Label>
                     <Input
@@ -638,7 +685,7 @@ export function DistributionDetailModal({
                       className="h-8 text-xs"
                     />
                   </div>
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                  <div className="space-y-1">
                     <Label className="text-[11px]">Orders (Shopee)</Label>
                     <Input
                       type="number"
@@ -646,6 +693,17 @@ export function DistributionDetailModal({
                       placeholder="0"
                       value={engOrders}
                       onChange={(e) => setEngOrders(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <Label className="text-[11px]">Komisi Aktual (Rp)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Opsional"
+                      value={engActualCommission}
+                      onChange={(e) => setEngActualCommission(e.target.value)}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -712,6 +770,21 @@ export function DistributionDetailModal({
                             </span>
                           </>
                         )}
+                        {m.actualCommission != null ? (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              Rp {Math.round(Number(m.actualCommission)).toLocaleString("id-ID")} (Aktual)
+                            </span>
+                          </>
+                        ) : m.ordersCount && avgCommission > 0 ? (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-muted-foreground">
+                              Rp {Math.round(m.ordersCount * avgCommission).toLocaleString("id-ID")} (Est.)
+                            </span>
+                          </>
+                        ) : null}
                       </div>
                       <button
                         type="button"
