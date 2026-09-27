@@ -136,8 +136,20 @@ export async function getDistributions(filter?: {
           commissionRate: Number(i.product.commissionRate),
         },
       })),
-      latestEngagement: d.engagements[0] || null,
-      engagements: d.engagements,
+      latestEngagement: d.engagements[0]
+        ? {
+            ...d.engagements[0],
+            actualCommission:
+              d.engagements[0].actualCommission != null
+                ? Number(d.engagements[0].actualCommission)
+                : null,
+          }
+        : null,
+      engagements: d.engagements.map((e) => ({
+        ...e,
+        actualCommission:
+          e.actualCommission != null ? Number(e.actualCommission) : null,
+      })),
     }));
   } catch (error) {
     console.error("Error fetching distributions:", error);
@@ -502,6 +514,7 @@ const DistributionEngagementSchema = z.object({
   sharesCount: z.coerce.number().min(0).default(0),
   clicksCount: z.coerce.number().min(0).default(0),
   ordersCount: z.coerce.number().min(0).optional().nullable(),
+  actualCommission: z.coerce.number().min(0).optional().nullable(),
   capturedAt: z.coerce.date().default(() => new Date()),
 });
 
@@ -510,6 +523,7 @@ export async function addDistributionEngagement(
   prevState: DistributionActionState,
   formData: FormData
 ): Promise<DistributionActionState> {
+  const rawActualCommission = formData.get("actualCommission");
   const rawData = {
     likesCount: formData.get("likesCount") || 0,
     viewsCount: formData.get("viewsCount") || 0,
@@ -518,6 +532,12 @@ export async function addDistributionEngagement(
     ordersCount: formData.get("ordersCount")
       ? Number(formData.get("ordersCount"))
       : null,
+    actualCommission:
+      rawActualCommission !== null &&
+      rawActualCommission !== undefined &&
+      rawActualCommission !== ""
+        ? Number(rawActualCommission)
+        : null,
     capturedAt: formData.get("capturedAt") || new Date().toISOString(),
   };
 
@@ -540,6 +560,7 @@ export async function addDistributionEngagement(
         sharesCount: validated.data.sharesCount,
         clicksCount: validated.data.clicksCount,
         ordersCount: validated.data.ordersCount,
+        actualCommission: validated.data.actualCommission,
         capturedAt: validated.data.capturedAt,
       },
     });

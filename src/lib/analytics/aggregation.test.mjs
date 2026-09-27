@@ -6,6 +6,7 @@ import {
   aggregateContentDistributionBreakdown,
   getContentMetricBasis,
   resolveDistributionReachBasis,
+  getLatestDistributionEngagement,
 } from "./aggregation.ts";
 
 // Helper dummy product
@@ -1395,6 +1396,257 @@ test("CASE 15 — Same Content linked to distributions with mixed reach bases", 
   // Conversion rate and EPC remain valid
   assert.equal(summary.overallCvr, 5.0, "Overall CVR is 35/700 * 100 = 5.0%");
   assert.equal(summary.overallEpc, 500, "Overall EPC is 350000/700 = 500");
+});
+
+test("CASE 16 — Distribution with multiple cumulative metric snapshots (Only latest snapshot used)", () => {
+  const content = {
+    id: "c16-content",
+    title: "Review Skincare Viral",
+    contentType: "shopee_video",
+    publishedAt: new Date("2026-03-01T08:00:00Z"),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 10000, likesCount: 400, commentsCount: 20, sharesCount: 10 }],
+  };
+
+  // Distribution with 2 historical snapshots:
+  // Snapshot A: 2026-03-01T10:00:00Z -> reach: 1,000, clicks: 20, orders: 2, commission: 20,000
+  // Snapshot B: 2026-03-02T10:00:00Z -> reach: 1,500, clicks: 30, orders: 3, commission: 30,000
+  const dist = {
+    id: "dist-c16",
+    contentId: "c16-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date("2026-03-01T09:00:00Z"),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [
+      {
+        id: "eng-snap-a",
+        capturedAt: new Date("2026-03-01T10:00:00Z"),
+        viewsCount: 1000,
+        likesCount: 20,
+        sharesCount: 5,
+        clicksCount: 20,
+        ordersCount: 2,
+        actualCommission: 20000,
+      },
+      {
+        id: "eng-snap-b",
+        capturedAt: new Date("2026-03-02T10:00:00Z"), // Latest
+        viewsCount: 1500,
+        likesCount: 35,
+        sharesCount: 8,
+        clicksCount: 30,
+        ordersCount: 3,
+        actualCommission: 30000,
+      },
+    ],
+  };
+
+  // Helper check
+  const latest = getLatestDistributionEngagement(dist.engagements);
+  assert.equal(latest.id, "eng-snap-b");
+  assert.equal(latest.viewsCount, 1500);
+
+  // Drilldown breakdown check
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [dist],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.totalReach, 1500, "Reach must NOT sum snapshots (1500, not 2500)");
+  assert.equal(summary.totalClicks, 30, "Clicks must NOT sum snapshots (30, not 50)");
+  assert.equal(summary.totalOrders, 3, "Orders must NOT sum snapshots (3, not 5)");
+  assert.equal(summary.totalCommission, 30000, "Commission must NOT sum snapshots (30,000, not 50,000)");
+  assert.equal(summary.overallEpc, 1000, "EPC is 30,000 / 30 = 1000");
+
+  assert.equal(summary.breakdown[0].reach, 1500);
+  assert.equal(summary.breakdown[0].clicks, 30);
+  assert.equal(summary.breakdown[0].orders, 3);
+  assert.equal(summary.breakdown[0].commission, 30000);
+  assert.equal(summary.breakdown[0].epc, 1000);
+
+  // Top-level Dashboard Aggregation check
+  const dashboard = aggregateDashboardMetrics({
+    contents: [content],
+    distributions: [dist],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  assert.equal(dashboard.businessOverview.affiliateClicks, 30, "Dashboard clicks use latest snapshot");
+  assert.equal(dashboard.businessOverview.orders, 3, "Dashboard orders use latest snapshot");
+  assert.equal(dashboard.businessOverview.commission, 30000, "Dashboard commission uses latest snapshot");
+  assert.equal(dashboard.businessOverview.epc, 1000);
+});
+
+test("CASE 17 — Partial commission must suppress aggregate EPC", () => {
+  const content = {
+    id: "c17-content",
+    title: "Multi-Product Content Campaign",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }, { product: productB }],
+    metrics: [{ viewsCount: 15000, likesCount: 600, commentsCount: 40, sharesCount: 20 }],
+  };
+
+  // Distribution A: Known actual commission (100 clicks, 5 orders, Rp100,000 commission)
+  const distA = {
+    id: "dist-c17-a",
+    contentId: "c17-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [
+      {
+        viewsCount: 5000,
+        clicksCount: 100,
+        ordersCount: 5,
+        actualCommission: 100000,
+        capturedAt: new Date(),
+      },
+    ],
+  };
+
+  // Distribution B: Multi-product distribution with orders > 0 but NO actualCommission
+  // (Cannot estimate because multi-product -> UNAVAILABLE)
+  const distB = {
+    id: "dist-c17-b",
+    contentId: "c17-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }, { product: productB }], // Multi-product
+    engagements: [
+      {
+        viewsCount: 5000,
+        clicksCount: 100,
+        ordersCount: 5,
+        actualCommission: null, // Unknown!
+        capturedAt: new Date(),
+      },
+    ],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [distA, distB],
+    allProducts: [productA, productB],
+  });
+
+  assert.equal(summary.breakdown[0].commissionProvenance, "ACTUAL");
+  assert.equal(summary.breakdown[0].commission, 100000);
+  assert.equal(summary.breakdown[0].epc, 1000);
+
+  assert.equal(summary.breakdown[1].commissionProvenance, "UNAVAILABLE");
+  assert.equal(summary.breakdown[1].commission, null);
+  assert.equal(summary.breakdown[1].epc, null);
+
+  // Overall Provenance is PARTIAL because some distributions are known and some are unavailable
+  assert.equal(summary.commissionProvenance, "PARTIAL");
+  // Total Commission is partial sum (100,000)
+  assert.equal(summary.totalCommission, 100000);
+  // Total Clicks is 200 (100 + 100)
+  assert.equal(summary.totalClicks, 200);
+
+  // Aggregate EPC must be SUPPRESSED (null / N/A) because click denominator includes unknown commission placements!
+  assert.equal(
+    summary.overallEpc,
+    null,
+    "Aggregate EPC must be null (N/A) when commission provenance is PARTIAL"
+  );
+});
+
+test("Mixed ContentMetric basis on dashboard sets contentEngagement.basis = mixed and rate = null", () => {
+  // Shopee Video: views-based format (1,000 plays, 100 engagements)
+  const videoContent = {
+    id: "c-video",
+    title: "Shopee Video Product Demo",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [
+      {
+        viewsCount: 1000,
+        likesCount: 70,
+        commentsCount: 20,
+        sharesCount: 10,
+        savesCount: 0,
+        clicksCount: 50,
+      },
+    ],
+  };
+
+  // Threads: impressions-based format (3,000 impressions, 150 engagements)
+  const threadsContent = {
+    id: "c-threads",
+    title: "Threads Recommendation Post",
+    contentType: "threads",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [
+      {
+        viewsCount: 3000,
+        likesCount: 100,
+        commentsCount: 30,
+        sharesCount: 20,
+        savesCount: 0,
+        clicksCount: 60,
+      },
+    ],
+  };
+
+  // Verify per-content basis resolution
+  assert.equal(getContentMetricBasis(videoContent.contentType), "views");
+  assert.equal(getContentMetricBasis(threadsContent.contentType), "impressions");
+
+  const dashboard = aggregateDashboardMetrics({
+    contents: [videoContent, threadsContent],
+    distributions: [],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  // Per-content ER must remain valid:
+  // Video ER: (70+20+10) / 1000 = 10.0%
+  assert.equal(dashboard.contentPerformance[0].er, 10.0);
+  assert.equal(dashboard.contentPerformance[0].metricBasis, "views");
+
+  // Threads ER: (100+30+20) / 3000 = 5.0%
+  assert.equal(dashboard.contentPerformance[1].er, 5.0);
+  assert.equal(dashboard.contentPerformance[1].metricBasis, "impressions");
+
+  // Aggregate Content Engagement must be marked "mixed" and aggregate rate suppressed (null / N/A)
+  // to avoid invalid blending of 4,000 heterogeneous reach!
+  assert.equal(
+    dashboard.businessOverview.contentEngagement.basis,
+    "mixed",
+    "Content engagement basis must be mixed when views and impressions content co-exist"
+  );
+  assert.equal(
+    dashboard.businessOverview.contentEngagement.rate,
+    null,
+    "Aggregate Content ER must be null (N/A) on mixed content basis"
+  );
+  assert.equal(
+    dashboard.businessOverview.engagementRate,
+    null,
+    "Top-level engagement rate must also be null on mixed content basis"
+  );
 });
 
 

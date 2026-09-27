@@ -86,6 +86,7 @@ export interface DistributionItemData {
     sharesCount: number;
     clicksCount: number;
     ordersCount: number | null;
+    actualCommission?: number | null;
     capturedAt: Date | string;
   } | null;
   engagements?: Array<{
@@ -95,6 +96,7 @@ export interface DistributionItemData {
     sharesCount: number;
     clicksCount: number;
     ordersCount: number | null;
+    actualCommission?: number | null;
     capturedAt: Date | string;
   }>;
 }

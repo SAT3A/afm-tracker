@@ -25,6 +25,8 @@ const ContentMetricSchema = z.object({
   sharesCount: z.coerce.number().min(0).default(0),
   savesCount: z.coerce.number().min(0).optional().nullable(),
   clicksCount: z.coerce.number().min(0).optional().nullable(),
+  ordersCount: z.coerce.number().min(0).optional().nullable(),
+  actualCommission: z.coerce.number().min(0).optional().nullable(),
   capturedAt: z.coerce.date().default(() => new Date()),
 });
 
@@ -142,7 +144,17 @@ export async function getContent(filter?: {
     });
 
     return contents.map((c) => {
-      const latestMetric = c.metrics[0] || null;
+      const serializeMetric = (m: (typeof c.metrics)[0] | undefined) =>
+        m
+          ? {
+              ...m,
+              actualCommission:
+                m.actualCommission != null ? Number(m.actualCommission) : null,
+            }
+          : null;
+      const latestMetric = serializeMetric(c.metrics[0]);
+      const metricsHistory = c.metrics.map((m) => serializeMetric(m)!);
+
       return {
         ...c,
         products: c.products.map((p) => ({
@@ -179,7 +191,7 @@ export async function getContent(filter?: {
           })),
         })),
         latestMetric,
-        metricsHistory: c.metrics,
+        metricsHistory,
       };
     });
   } catch (error) {
@@ -507,6 +519,9 @@ export async function addContentMetric(
   prevState: ContentActionState,
   formData: FormData
 ): Promise<ContentActionState> {
+  const rawOrdersCount = formData.get("ordersCount");
+  const rawActualCommission = formData.get("actualCommission");
+
   const rawData = {
     viewsCount: formData.get("viewsCount") || 0,
     likesCount: formData.get("likesCount") || 0,
@@ -518,6 +533,18 @@ export async function addContentMetric(
     clicksCount: formData.get("clicksCount")
       ? Number(formData.get("clicksCount"))
       : null,
+    ordersCount:
+      rawOrdersCount !== null &&
+      rawOrdersCount !== undefined &&
+      rawOrdersCount !== ""
+        ? Number(rawOrdersCount)
+        : null,
+    actualCommission:
+      rawActualCommission !== null &&
+      rawActualCommission !== undefined &&
+      rawActualCommission !== ""
+        ? Number(rawActualCommission)
+        : null,
     capturedAt: formData.get("capturedAt") || new Date().toISOString(),
   };
 
@@ -541,6 +568,8 @@ export async function addContentMetric(
         sharesCount: validated.data.sharesCount,
         savesCount: validated.data.savesCount,
         clicksCount: validated.data.clicksCount,
+        ordersCount: validated.data.ordersCount,
+        actualCommission: validated.data.actualCommission,
         capturedAt: validated.data.capturedAt,
       },
     });

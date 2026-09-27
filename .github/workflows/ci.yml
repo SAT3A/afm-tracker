@@ -46,7 +46,7 @@ jobs:
       - name: 🟢 2. Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Menggunakan Node.js versi 20 LTS
+          node-version: 22 # Menggunakan Node.js versi 22 LTS (mendukung native TypeScript strip types)
           cache: "npm" # Mengaktifkan caching dependensi npm agar run berikutnya lebih cepat
 
       # ------------------------------------------------------------------------
@@ -89,9 +89,16 @@ jobs:
         # Memeriksa aturan penulisan kode, imports yang tidak terpakai, dan best practice Next.js.
 
       # ------------------------------------------------------------------------
-      # LANGKAH 8: Uji Coba Kompilasi Production Build Next.js
+      # LANGKAH 8: Jalankan Analytics Regression Tests
       # ------------------------------------------------------------------------
-      - name: 🚀 8. Build Next.js Application
+      - name: 🧪 8. Run Analytics Regression Tests
+        run: npm test
+        # Memastikan seluruh test suite guardrail analitik 100% pass sebelum build.
+
+      # ------------------------------------------------------------------------
+      # LANGKAH 9: Uji Coba Kompilasi Production Build Next.js
+      # ------------------------------------------------------------------------
+      - name: 🚀 9. Build Next.js Application
         run: npm run build
         # Melakukan proses kompilasi production build. Jika langkah ini berhasil (hijau),
         # artinya aplikasi aman dan siap dideploy ke Vercel tanpa error build.

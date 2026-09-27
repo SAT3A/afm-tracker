@@ -30,6 +30,7 @@ import {
   Trash2,
   Loader2,
   TrendingUp,
+  ShoppingBag,
 } from "lucide-react";
 import { addContentMetric, deleteContentMetric } from "@/app/actions/content";
 import {
@@ -74,6 +75,8 @@ export interface ContentItemData {
     sharesCount: number;
     savesCount: number | null;
     clicksCount: number | null;
+    ordersCount?: number | null;
+    actualCommission?: number | null;
     capturedAt: Date | string;
   } | null;
   metricsHistory?: {
@@ -84,6 +87,8 @@ export interface ContentItemData {
     sharesCount: number;
     savesCount: number | null;
     clicksCount: number | null;
+    ordersCount?: number | null;
+    actualCommission?: number | null;
     capturedAt: Date | string;
   }[];
   distributions?: Array<{
@@ -155,6 +160,8 @@ export function ContentDetailModal({
   const [sharesCount, setSharesCount] = useState("");
   const [savesCount, setSavesCount] = useState("");
   const [clicksCount, setClicksCount] = useState("");
+  const [ordersCount, setOrdersCount] = useState("");
+  const [actualCommission, setActualCommission] = useState("");
   const [metricError, setMetricError] = useState<string | null>(null);
 
   if (!content) return null;
@@ -176,6 +183,8 @@ export function ContentDetailModal({
     formData.append("sharesCount", sharesCount || "0");
     if (savesCount) formData.append("savesCount", savesCount);
     if (clicksCount) formData.append("clicksCount", clicksCount);
+    if (ordersCount) formData.append("ordersCount", ordersCount);
+    if (actualCommission) formData.append("actualCommission", actualCommission);
     formData.append("capturedAt", new Date().toISOString());
 
     startTransition(async () => {
@@ -188,6 +197,8 @@ export function ContentDetailModal({
         setSharesCount("");
         setSavesCount("");
         setClicksCount("");
+        setOrdersCount("");
+        setActualCommission("");
         router.refresh();
       } else {
         setMetricError(res.message || "Gagal menyimpan metrik.");
@@ -424,6 +435,33 @@ export function ContentDetailModal({
               </div>
             </div>
 
+            {/* Commercial Outcomes on Content (if recorded) */}
+            {(latest?.ordersCount != null || latest?.actualCommission != null) && (
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                    Hasil Komersial Konten:
+                  </span>
+                  {latest.ordersCount != null && (
+                    <span className="font-bold text-emerald-600 dark:text-emerald-300">
+                      {latest.ordersCount} Orders
+                    </span>
+                  )}
+                </div>
+                {latest.actualCommission != null ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      Aktual
+                    </span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-300">
+                      Rp {Math.round(Number(latest.actualCommission)).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {/* Input Metric Form */}
             {showAddMetric && (
               <form
@@ -440,7 +478,7 @@ export function ContentDetailModal({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[11px]">Jumlah Views</Label>
                     <Input
@@ -507,6 +545,28 @@ export function ContentDetailModal({
                       className="h-8 text-xs"
                     />
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Orders (Opsional)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={ordersCount}
+                      onChange={(e) => setOrdersCount(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Komisi Aktual (Rp)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Opsional"
+                      value={actualCommission}
+                      onChange={(e) => setActualCommission(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">
@@ -567,6 +627,22 @@ export function ContentDetailModal({
                             <span>&bull;</span>
                             <span className="text-primary font-semibold">
                               {m.clicksCount} clicks
+                            </span>
+                          </>
+                        )}
+                        {m.ordersCount != null && m.ordersCount > 0 && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              {m.ordersCount} orders
+                            </span>
+                          </>
+                        )}
+                        {m.actualCommission != null && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              Rp {Math.round(Number(m.actualCommission)).toLocaleString("id-ID")} (Aktual)
                             </span>
                           </>
                         )}
