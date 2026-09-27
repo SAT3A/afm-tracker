@@ -32,14 +32,19 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Video,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DistributionItemData } from "./distribution-table";
+import { SimpleContentOption } from "./distribution-form-modal";
 import {
   updateDistributionStatus,
   updateDistributionPostUrl,
   addDistributionEngagement,
   deleteDistributionEngagement,
+  linkDistributionToContent,
 } from "@/app/actions/distributions";
 import { useRouter } from "next/navigation";
 
@@ -47,6 +52,7 @@ interface DistributionDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   distribution: DistributionItemData | null;
+  contents?: SimpleContentOption[];
   onEdit?: (dist: DistributionItemData) => void;
 }
 
@@ -54,6 +60,7 @@ export function DistributionDetailModal({
   open,
   onOpenChange,
   distribution,
+  contents = [],
   onEdit,
 }: DistributionDetailModalProps) {
   const router = useRouter();
@@ -75,7 +82,18 @@ export function DistributionDetailModal({
   const [engOrders, setEngOrders] = useState("");
   const [engError, setEngError] = useState<string | null>(null);
 
+  // Link content state
+  const [selectedContentIdToLink, setSelectedContentIdToLink] = useState("");
+
   if (!distribution) return null;
+
+  const handleLinkContent = (cId: string | null) => {
+    startTransition(async () => {
+      await linkDistributionToContent(distribution.id, cId);
+      router.refresh();
+      onOpenChange(false);
+    });
+  };
 
   const handleCopyLink = (pId: string, link: string) => {
     navigator.clipboard.writeText(link);
@@ -261,6 +279,96 @@ export function DistributionDetailModal({
                 Penyebar postingan / komentar
               </p>
             </div>
+          </div>
+
+          {/* Content Attribution Card */}
+          <div className="p-3.5 rounded-xl border border-border bg-card/50 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Video className="w-3.5 h-3.5 text-primary" />
+                Keterkaitan Materi Konten Kreatif
+              </span>
+              {distribution.content ? (
+                <Badge className="text-[10px] bg-secondary/10 text-secondary border-secondary/20">
+                  Teratribusi
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                  Tanpa Konten (Unlinked)
+                </Badge>
+              )}
+            </div>
+
+            {distribution.content ? (
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-foreground">
+                    {distribution.content.title}
+                  </p>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="uppercase font-mono">
+                      {distribution.content.contentType}
+                    </span>
+                    {distribution.content.platformUrl && (
+                      <>
+                        <span>&bull;</span>
+                        <a
+                          href={distribution.content.platformUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-0.5"
+                        >
+                          Lihat materi asli <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => handleLinkContent(null)}
+                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive border-border hover:border-destructive/30"
+                >
+                  <Unlink className="w-3 h-3" />
+                  Lepas Konten
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Distribusi ini dicatat sebagai sebaran link mandiri tanpa konten video/postingan kreatif.
+                </p>
+
+                {contents && contents.length > 0 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <select
+                      value={selectedContentIdToLink}
+                      onChange={(e) => setSelectedContentIdToLink(e.target.value)}
+                      className="flex-1 h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="">-- Pilih konten untuk dihubungkan --</option>
+                      {contents.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          [{c.contentType.toUpperCase()}] {c.title}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      disabled={isPending || !selectedContentIdToLink}
+                      onClick={() => handleLinkContent(selectedContentIdToLink)}
+                      className="h-8 text-xs gap-1 bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                    >
+                      <Link2 className="w-3 h-3" />
+                      Hubungkan Konten
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Status Action (when pending approval) */}

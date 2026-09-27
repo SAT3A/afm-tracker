@@ -100,6 +100,44 @@ export async function getContent(filter?: {
         metrics: {
           orderBy: { capturedAt: "desc" },
         },
+        distributions: {
+          orderBy: { postedAt: "desc" },
+          include: {
+            platform: {
+              select: {
+                id: true,
+                name: true,
+                platformType: true,
+                category: true,
+                url: true,
+              },
+            },
+            persona: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    productName: true,
+                    brand: true,
+                    category: true,
+                    price: true,
+                    commissionRate: true,
+                  },
+                },
+              },
+            },
+            engagements: {
+              orderBy: { capturedAt: "desc" },
+            },
+          },
+        },
       },
     });
 
@@ -114,6 +152,31 @@ export async function getContent(filter?: {
             price: Number(p.product.price),
             commissionRate: Number(p.product.commissionRate),
           },
+        })),
+        distributions: (c.distributions || []).map((d) => ({
+          ...d,
+          items: d.items.map((i) => ({
+            ...i,
+            product: {
+              ...i.product,
+              price: Number(i.product.price),
+              commissionRate: Number(i.product.commissionRate),
+            },
+          })),
+          latestEngagement: d.engagements[0]
+            ? {
+                ...d.engagements[0],
+                actualCommission:
+                  d.engagements[0].actualCommission != null
+                    ? Number(d.engagements[0].actualCommission)
+                    : null,
+              }
+            : null,
+          engagements: d.engagements.map((e) => ({
+            ...e,
+            actualCommission:
+              e.actualCommission != null ? Number(e.actualCommission) : null,
+          })),
         })),
         latestMetric,
         metricsHistory: c.metrics,
@@ -155,6 +218,44 @@ export async function getContentById(id: string) {
         metrics: {
           orderBy: { capturedAt: "desc" },
         },
+        distributions: {
+          orderBy: { postedAt: "desc" },
+          include: {
+            platform: {
+              select: {
+                id: true,
+                name: true,
+                platformType: true,
+                category: true,
+                url: true,
+              },
+            },
+            persona: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    productName: true,
+                    brand: true,
+                    category: true,
+                    price: true,
+                    commissionRate: true,
+                  },
+                },
+              },
+            },
+            engagements: {
+              orderBy: { capturedAt: "desc" },
+            },
+          },
+        },
       },
     });
 
@@ -169,6 +270,31 @@ export async function getContentById(id: string) {
           price: Number(p.product.price),
           commissionRate: Number(p.product.commissionRate),
         },
+      })),
+      distributions: (content.distributions || []).map((d) => ({
+        ...d,
+        items: d.items.map((i) => ({
+          ...i,
+          product: {
+            ...i.product,
+            price: Number(i.product.price),
+            commissionRate: Number(i.product.commissionRate),
+          },
+        })),
+        latestEngagement: d.engagements[0]
+          ? {
+              ...d.engagements[0],
+              actualCommission:
+                d.engagements[0].actualCommission != null
+                  ? Number(d.engagements[0].actualCommission)
+                  : null,
+            }
+          : null,
+        engagements: d.engagements.map((e) => ({
+          ...e,
+          actualCommission:
+            e.actualCommission != null ? Number(e.actualCommission) : null,
+        })),
       })),
       latestMetric: content.metrics[0] || null,
       metricsHistory: content.metrics,

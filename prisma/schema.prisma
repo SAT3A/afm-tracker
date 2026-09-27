@@ -81,6 +81,7 @@ model Distribution {
   id               String   @id @default(uuid())
   platformId       String   @map("platform_id")
   personaId        String   @map("persona_id")
+  contentId        String?  @map("content_id")
   distributionType String   @default("comment") @map("distribution_type") // post / comment
   postUrl          String   @map("post_url")
   postedAt         DateTime @default(now()) @map("posted_at")
@@ -92,9 +93,11 @@ model Distribution {
 
   platform         Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
   persona          Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  content          Content? @relation(fields: [contentId], references: [id], onDelete: SetNull)
   items            DistributionItem[]
   engagements      DistributionEngagement[]
 
+  @@index([contentId])
   @@map("distributions")
 }
 
@@ -147,6 +150,7 @@ model Content {
   persona     Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
   products    ContentProduct[]
   metrics     ContentMetric[]
+  distributions Distribution[]
 
   @@map("contents")
 }

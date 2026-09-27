@@ -24,12 +24,14 @@ import {
   ShieldAlert,
   XCircle,
   Package,
+  Video,
 } from "lucide-react";
 import {
   DistributionFormModal,
   SimpleProductOption,
   SimplePlatformOption,
   SimplePersonaOption,
+  SimpleContentOption,
 } from "./distribution-form-modal";
 import { DistributionDetailModal } from "./distribution-detail-modal";
 import { deleteDistribution } from "@/app/actions/distributions";
@@ -43,6 +45,13 @@ export interface DistributionItemData {
   status: string;
   campaign: string | null;
   notes: string | null;
+  contentId?: string | null;
+  content?: {
+    id: string;
+    title: string;
+    contentType: string;
+    platformUrl?: string | null;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
   platform: {
@@ -96,6 +105,7 @@ interface DistributionTableProps {
   platforms: SimplePlatformOption[];
   personas: SimplePersonaOption[];
   campaigns?: string[];
+  contents?: SimpleContentOption[];
 }
 
 export function DistributionTable({
@@ -104,6 +114,7 @@ export function DistributionTable({
   platforms,
   personas,
   campaigns = [],
+  contents = [],
 }: DistributionTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -327,6 +338,9 @@ export function DistributionTable({
                 <TableHead className="w-[110px] text-xs font-semibold text-muted-foreground">
                   Tipe Sebar
                 </TableHead>
+                <TableHead className="w-[170px] text-xs font-semibold text-muted-foreground">
+                  Materi Konten
+                </TableHead>
                 <TableHead className="w-[200px] text-xs font-semibold text-muted-foreground">
                   Produk Terkait
                 </TableHead>
@@ -351,7 +365,7 @@ export function DistributionTable({
               {filteredDistributions.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="h-44 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -434,6 +448,28 @@ export function DistributionTable({
                           ? "💬 Komentar"
                           : "📝 Post"}
                       </span>
+                    </TableCell>
+
+                    {/* Linked Content */}
+                    <TableCell className="py-3">
+                      {item.content ? (
+                        <div className="space-y-0.5">
+                          <span
+                            className="text-xs font-medium text-foreground flex items-center gap-1.5 truncate max-w-[160px]"
+                            title={item.content.title}
+                          >
+                            <Video className="w-3.5 h-3.5 text-primary shrink-0" />
+                            {item.content.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                            {item.content.contentType}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                          Tanpa Konten
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Products */}
@@ -577,6 +613,7 @@ export function DistributionTable({
         products={products}
         platforms={platforms}
         personas={personas}
+        contents={contents}
         campaignOptions={campaigns}
         onSuccess={() => router.refresh()}
       />
@@ -586,6 +623,7 @@ export function DistributionTable({
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         distribution={selectedDist}
+        contents={contents}
         onEdit={(dist) => {
           setDistToEdit(dist);
           setIsFormOpen(true);

@@ -32,6 +32,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { addContentMetric, deleteContentMetric } from "@/app/actions/content";
+import {
+  aggregateContentDistributionBreakdown,
+  type CommissionProvenance,
+} from "@/lib/analytics/aggregation";
 import { useRouter } from "next/navigation";
 
 export interface ContentItemData {
@@ -82,6 +86,47 @@ export interface ContentItemData {
     clicksCount: number | null;
     capturedAt: Date | string;
   }[];
+  distributions?: Array<{
+    id: string;
+    platformId: string;
+    platform: {
+      id: string;
+      name: string;
+      platformType: string;
+      category?: string;
+      url?: string | null;
+    };
+    persona: {
+      id: string;
+      name: string;
+      avatarUrl?: string | null;
+    };
+    distributionType: string;
+    postUrl?: string | null;
+    postedAt: Date | string;
+    status: string;
+    items: Array<{
+      id: string;
+      product: {
+        id: string;
+        productName: string;
+        brand: string;
+        category?: string;
+        price: number;
+        commissionRate: number;
+      };
+    }>;
+    engagements: Array<{
+      id: string;
+      viewsCount: number;
+      likesCount: number;
+      sharesCount: number;
+      clicksCount: number;
+      ordersCount?: number | null;
+      actualCommission?: number | string | null;
+      capturedAt: Date | string;
+    }>;
+  }>;
 }
 
 interface ContentDetailModalProps {
@@ -194,6 +239,47 @@ export function ContentDetailModal({
   };
 
   const latest = content.latestMetric;
+
+  // Pure analytics calculation for Same Content Across Channels breakdown
+  const distSummary = aggregateContentDistributionBreakdown({
+    content: content as any,
+    distributions: (content.distributions || []) as any,
+  });
+
+  const getProvenanceBadge = (provenance: CommissionProvenance) => {
+    switch (provenance) {
+      case "ACTUAL":
+        return (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            Aktual
+          </span>
+        );
+      case "ESTIMATED":
+        return (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            Estimasi
+          </span>
+        );
+      case "MIXED":
+        return (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+            Mixed
+          </span>
+        );
+      case "PARTIAL":
+        return (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            Parsial
+          </span>
+        );
+      default:
+        return (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+            N/A
+          </span>
+        );
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -495,6 +581,176 @@ export function ContentDetailModal({
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Performa Distribusi Konten (Same Content Across Channels) */}
+          <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <div>
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Share2 className="w-3.5 h-3.5 text-primary" />
+                  Performa Distribusi Konten (Same Content Across Channels)
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Perbandingan performa sebaran materi ini di berbagai saluran & grup target.
+                </p>
+              </div>
+              <Badge variant="outline" className="text-[10px] w-fit font-mono">
+                {distSummary.totalDistributions} Penempatan
+              </Badge>
+            </div>
+
+            {distSummary.totalDistributions === 0 ? (
+              <div className="p-4 rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground space-y-1">
+                <p className="font-medium">Materi konten ini belum disebarkan ke grup atau channel manapun.</p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  Kaitkan materi ini saat mencatat sebaran link di menu Distribusi untuk melihat komparasi antar saluran.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Aggregate KPI Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-2.5 rounded-lg border border-border bg-background/50">
+                    <span className="text-[11px] text-muted-foreground font-medium">Jangkauan</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <p className="text-base font-extrabold text-foreground">
+                        {distSummary.totalReach.toLocaleString("id-ID")}
+                      </p>
+                      <Badge variant="secondary" className="text-[9px] uppercase px-1 py-0 font-mono">
+                        {distSummary.reachBasis === "views"
+                          ? "Plays"
+                          : distSummary.reachBasis === "impressions"
+                          ? "Impresi"
+                          : "Campuran"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg border border-border bg-background/50">
+                    <span className="text-[11px] text-muted-foreground font-medium">Klik & CTR</span>
+                    <p className="text-base font-extrabold text-primary mt-1">
+                      {distSummary.totalClicks.toLocaleString("id-ID")}{" "}
+                      <span className="text-[11px] font-normal text-muted-foreground">
+                        ({distSummary.overallCtr != null ? `${distSummary.overallCtr}%` : "N/A"})
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg border border-border bg-background/50">
+                    <span className="text-[11px] text-muted-foreground font-medium">Pesanan & CVR</span>
+                    <p className="text-base font-extrabold text-secondary mt-1">
+                      {distSummary.totalOrders}{" "}
+                      <span className="text-[11px] font-normal text-muted-foreground">
+                        ({distSummary.overallCvr}%)
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg border border-border bg-background/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground font-medium">Komisi & EPC</span>
+                      {getProvenanceBadge(distSummary.commissionProvenance)}
+                    </div>
+                    <p className="text-base font-extrabold text-foreground mt-1">
+                      {distSummary.totalCommission != null
+                        ? `Rp ${distSummary.totalCommission.toLocaleString("id-ID")}`
+                        : "N/A"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      EPC: {distSummary.overallEpc != null ? `Rp ${distSummary.overallEpc.toLocaleString("id-ID")}` : "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Breakdown Table */}
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-muted/50 border-b border-border text-[11px] font-semibold text-muted-foreground">
+                        <tr>
+                          <th className="p-2.5">Target Saluran / Grup</th>
+                          <th className="p-2.5">Waktu</th>
+                          <th className="p-2.5 text-right">Jangkauan</th>
+                          <th className="p-2.5 text-right">Klik & CTR</th>
+                          <th className="p-2.5 text-right">Pesanan & CVR</th>
+                          <th className="p-2.5 text-right">Komisi & Status</th>
+                          <th className="p-2.5 text-right">EPC</th>
+                          <th className="p-2.5 text-center">Tautan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {distSummary.breakdown.map((row) => (
+                          <tr key={row.distributionId} className="hover:bg-muted/30">
+                            <td className="p-2.5 font-medium text-foreground">
+                              <div>{row.platformName}</div>
+                              <span className="text-[10px] uppercase font-mono text-muted-foreground">
+                                {row.platformType} &bull; {row.distributionType}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-muted-foreground whitespace-nowrap text-[11px]">
+                              {new Date(row.postedAt).toLocaleDateString("id-ID")}
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <span className="font-semibold text-foreground">
+                                {row.reach.toLocaleString("id-ID")}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-1">
+                                [{row.reachBasis === "views" ? "Plays" : "Impresi"}]
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <span className="font-semibold text-primary">
+                                {row.clicks.toLocaleString("id-ID")}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-1">
+                                ({row.ctr != null ? `${row.ctr}%` : "0%"})
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <span className="font-semibold text-secondary">
+                                {row.orders}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground ml-1">
+                                ({row.cvr}%)
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <div className="font-semibold text-foreground">
+                                {row.commission != null
+                                  ? `Rp ${row.commission.toLocaleString("id-ID")}`
+                                  : "N/A"}
+                              </div>
+                              <div className="flex justify-end pt-0.5">
+                                {getProvenanceBadge(row.commissionProvenance)}
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-right font-medium text-muted-foreground">
+                              {row.epc != null ? `Rp ${row.epc.toLocaleString("id-ID")}` : "N/A"}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {row.postUrl ? (
+                                <a
+                                  href={row.postUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:text-primary/80 inline-flex items-center justify-center"
+                                  title="Buka sebaran"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground/50 text-[11px]">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}

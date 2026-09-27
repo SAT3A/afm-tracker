@@ -7,6 +7,7 @@ import { z } from "zod";
 const SingleDistributionSchema = z.object({
   platformId: z.string().min(1, "Pilih platform / grup target"),
   personaId: z.string().min(1, "Pilih persona yang menyebar"),
+  contentId: z.string().optional().nullable(),
   distributionType: z.enum(["post", "comment"]).default("comment"),
   postUrl: z.string().default(""),
   postedAt: z.coerce.date().default(() => new Date()),
@@ -22,6 +23,7 @@ const BatchDistributionSchema = z.object({
   platformIds: z.array(z.string()).min(1, "Pilih minimal 1 grup/platform target"),
   productIds: z.array(z.string()).min(1, "Pilih minimal 1 produk"),
   personaId: z.string().min(1, "Pilih persona yang menyebar"),
+  contentId: z.string().optional().nullable(),
   distributionType: z.enum(["post", "comment"]).default("comment"),
   campaign: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -113,6 +115,14 @@ export async function getDistributions(filter?: {
         engagements: {
           orderBy: { capturedAt: "desc" },
         },
+        content: {
+          select: {
+            id: true,
+            title: true,
+            contentType: true,
+            platformUrl: true,
+          },
+        },
       },
     });
 
@@ -144,9 +154,16 @@ export async function createSingleDistribution(
     ? rawProductIds.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
+  const rawContentId = formData.get("contentId") as string;
+  const contentId =
+    rawContentId && rawContentId !== "none" && rawContentId.trim() !== ""
+      ? rawContentId.trim()
+      : null;
+
   const rawData = {
     platformId: formData.get("platformId"),
     personaId: formData.get("personaId"),
+    contentId,
     distributionType: formData.get("distributionType") || "comment",
     postUrl: (formData.get("postUrl") as string)?.trim() || "",
     postedAt: formData.get("postedAt") || new Date().toISOString(),
@@ -186,6 +203,7 @@ export async function createSingleDistribution(
         data: {
           platformId: data.platformId,
           personaId: data.personaId,
+          contentId: data.contentId || null,
           distributionType: data.distributionType,
           postUrl: data.postUrl,
           postedAt: data.postedAt,
@@ -239,10 +257,17 @@ export async function createBatchDistribution(
     ? rawProductIds.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
+  const rawContentId = formData.get("contentId") as string;
+  const contentId =
+    rawContentId && rawContentId !== "none" && rawContentId.trim() !== ""
+      ? rawContentId.trim()
+      : null;
+
   const rawData = {
     platformIds,
     productIds,
     personaId: formData.get("personaId"),
+    contentId,
     distributionType: formData.get("distributionType") || "comment",
     campaign: formData.get("campaign") || null,
     notes: formData.get("notes") || null,
@@ -283,6 +308,7 @@ export async function createBatchDistribution(
           data: {
             platformId: pId,
             personaId: data.personaId,
+            contentId: data.contentId || null,
             distributionType: data.distributionType,
             postUrl: "", // Can be filled later after sebar
             postedAt: data.postedAt,
@@ -331,9 +357,16 @@ export async function updateDistribution(
     ? rawProductIds.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
+  const rawContentId = formData.get("contentId") as string;
+  const contentId =
+    rawContentId && rawContentId !== "none" && rawContentId.trim() !== ""
+      ? rawContentId.trim()
+      : null;
+
   const rawData = {
     platformId: formData.get("platformId"),
     personaId: formData.get("personaId"),
+    contentId,
     distributionType: formData.get("distributionType") || "comment",
     postUrl: (formData.get("postUrl") as string)?.trim() || "",
     postedAt: formData.get("postedAt") || new Date().toISOString(),
@@ -362,6 +395,7 @@ export async function updateDistribution(
         data: {
           platformId: data.platformId,
           personaId: data.personaId,
+          contentId: data.contentId || null,
           distributionType: data.distributionType,
           postUrl: data.postUrl,
           postedAt: data.postedAt,
@@ -607,3 +641,48 @@ export async function checkDuplicateDistributions(
     return [];
   }
 }
+
+export async function linkDistributionToContent(
+  distributionId: string,
+  contentId: string | null
+): Promise<DistributionActionState> {
+  try {
+    const validContentId =
+      contentId && contentId !== "none" && contentId.trim() !== ""
+        ? contentId.trim()
+        : null;
+
+    if (validContentId) {
+      const contentExists = await prisma.content.findUnique({
+        where: { id: validContentId },
+        select: { id: true, title: true },
+      });
+      if (!contentExists) {
+        return { success: false, message: "Konten tidak ditemukan." };
+      }
+    }
+
+    await prisma.distribution.update({
+      where: { id: distributionId },
+      data: { contentId: validContentId },
+    });
+
+    revalidatePath("/distributions");
+    revalidatePath("/contents");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: validContentId
+        ? "Berhasil menghubungkan distribusi ke konten."
+        : "Berhasil melepas tautan konten dari distribusi.",
+    };
+  } catch (error) {
+    console.error("Link distribution to content error:", error);
+    return {
+      success: false,
+      message: "Gagal memperbarui keterkaitan konten distribusi.",
+    };
+  }
+}
+

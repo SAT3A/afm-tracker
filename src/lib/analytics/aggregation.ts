@@ -33,6 +33,7 @@ export interface RawPlatform {
   id: string;
   name: string;
   platformType: string;
+  category?: string | null;
   status?: string;
 }
 
@@ -61,13 +62,23 @@ export interface RawContentItem {
 export interface RawDistributionItem {
   id: string;
   platformId: string;
+  personaId?: string;
+  contentId?: string | null;
+  distributionType?: string;
   platform: RawPlatform;
   persona: { id: string; name: string };
+  content?: {
+    id: string;
+    title: string;
+    contentType: string;
+  } | null;
   postedAt: Date | string;
   status: string;
   postUrl?: string | null;
+  metricBasis?: MetricBasis;
   items: Array<{
-    product: RawProduct;
+    productId?: string;
+    product?: RawProduct;
   }>;
   engagements: Array<{
     viewsCount: number;
@@ -76,7 +87,54 @@ export interface RawDistributionItem {
     clicksCount: number;
     ordersCount?: number | null;
     actualCommission?: number | string | null;
+    metricBasis?: MetricBasis;
   }>;
+}
+
+export type CommissionProvenance =
+  | "ACTUAL"
+  | "ESTIMATED"
+  | "MIXED"
+  | "PARTIAL"
+  | "UNAVAILABLE";
+
+export interface ContentDistributionBreakdownItem {
+  distributionId: string;
+  platformId: string;
+  platformName: string;
+  platformType: string;
+  distributionType: string;
+  postUrl?: string | null;
+  postedAt: Date | string;
+  status: string;
+  productCount: number;
+  productNames: string[];
+  reach: number;
+  reachBasis: MetricBasis;
+  clicks: number;
+  ctr: number | null;
+  orders: number;
+  cvr: number;
+  commission: number | null;
+  commissionProvenance: CommissionProvenance;
+  epc: number | null;
+}
+
+export interface ContentDistributionSummary {
+  contentId: string;
+  contentTitle: string;
+  contentType: string;
+  totalDistributions: number;
+  totalReach: number;
+  reachBasis: MetricBasis;
+  totalClicks: number;
+  overallCtr: number | null;
+  totalOrders: number;
+  overallCvr: number;
+  totalCommission: number | null;
+  commissionProvenance: CommissionProvenance;
+  overallEpc: number | null;
+  breakdown: ContentDistributionBreakdownItem[];
 }
 
 export interface ContentPerformanceResult {
@@ -420,9 +478,13 @@ export function aggregateDashboardMetrics(params: {
       distComm = Number(eng.actualCommission);
       isDistActualComm = true;
     } else if (orders > 0 && dist.items.length === 1) {
-      const p = dist.items[0].product;
-      distComm = (orders * Number(p.price) * Number(p.commissionRate)) / 100;
-      isDistActualComm = false;
+      const p =
+        dist.items[0].product ||
+        allProducts.find((prod) => prod.id === dist.items[0].productId);
+      if (p) {
+        distComm = (orders * Number(p.price) * Number(p.commissionRate)) / 100;
+        isDistActualComm = false;
+      }
     }
     totalDistCommission += distComm;
 
@@ -437,15 +499,17 @@ export function aggregateDashboardMetrics(params: {
 
     // Product Attribution Guard (Anti-Phantom Multiplier)
     if (dist.items.length === 1) {
-      const pId = dist.items[0].product.id;
-      const pEntry = singleProductMap.get(pId);
-      if (pEntry) {
-        pEntry.distributionCount += 1;
-        pEntry.totalClicks += clicks;
-        pEntry.totalOrders += orders;
-        pEntry.totalCommission += distComm;
-        if (!isDistActualComm && orders > 0) {
-          pEntry.hasEstimatedCommission = true;
+      const pId = dist.items[0].product?.id || dist.items[0].productId;
+      if (pId) {
+        const pEntry = singleProductMap.get(pId);
+        if (pEntry) {
+          pEntry.distributionCount += 1;
+          pEntry.totalClicks += clicks;
+          pEntry.totalOrders += orders;
+          pEntry.totalCommission += distComm;
+          if (!isDistActualComm && orders > 0) {
+            pEntry.hasEstimatedCommission = true;
+          }
         }
       }
     } else if (dist.items.length > 1) {
@@ -656,5 +720,338 @@ export function aggregateDashboardMetrics(params: {
     contentPerformance,
     productAnalytics,
     channelEfficiency,
+  };
+}
+
+/**
+ * Determines content metric basis (views vs impressions) preserved from Phase 1.
+ * Does not assume all content records are videos.
+ */
+export function getContentMetricBasis(contentType: string): MetricBasis {
+  const t = (contentType || "").toLowerCase();
+  if (
+    t.includes("video") ||
+    t.includes("reels") ||
+    t.includes("tiktok") ||
+    t.includes("youtube") ||
+    t.includes("shorts")
+  ) {
+    return "views";
+  }
+  return "impressions";
+}
+
+/**
+ * Resolves the reach basis for a distribution placement.
+ *
+ * Denominator Semantics (Phase 2 Locked):
+ * A Distribution's denominator represents the DISTRIBUTION PLACEMENT, not automatically
+ * inheriting the format of its source creative.
+ * ContentMetric metricBasis and DistributionEngagement metricBasis remain independent concepts.
+ *
+ * Deterministic Resolution Rules:
+ * 1. Explicit metadata: If distribution or engagement has an explicit metricBasis, respect it.
+ * 2. Distribution Type: Comments in posts/threads are strictly impression-based ("impressions").
+ * 3. Video-native placements: Platforms and channels whose primary consumption metric is video plays
+ *    (e.g., tiktok, youtube, shopee_video, reels-only accounts) resolve to "views".
+ * 4. Group / Community / Feed / Chat placements: Placements whose primary consumption metric is
+ *    post reach/impressions (e.g. facebook groups/pages, threads, telegram, whatsapp, twitter)
+ *    resolve to "impressions".
+ */
+export function resolveDistributionReachBasis(
+  distOrContent: RawDistributionItem | RawContentItem,
+  maybeContentOrDist?: RawContentItem | RawDistributionItem
+): MetricBasis {
+  let dist: RawDistributionItem | undefined;
+  let content: RawContentItem | undefined;
+
+  // Support both (dist, content) and legacy (content, dist) invocations
+  if (distOrContent && ("platform" in distOrContent || "distributionType" in distOrContent)) {
+    dist = distOrContent as RawDistributionItem;
+    content = maybeContentOrDist as RawContentItem | undefined;
+  } else if (maybeContentOrDist && ("platform" in maybeContentOrDist || "distributionType" in maybeContentOrDist)) {
+    dist = maybeContentOrDist as RawDistributionItem;
+    content = distOrContent as RawContentItem;
+  } else if (distOrContent && "contentType" in distOrContent) {
+    content = distOrContent as RawContentItem;
+  }
+
+  // 1. Explicit metadata on distribution or its latest engagement
+  const explicitDistBasis = dist?.metricBasis;
+  if (explicitDistBasis === "views" || explicitDistBasis === "impressions" || explicitDistBasis === "mixed") {
+    return explicitDistBasis;
+  }
+  const explicitEngBasis = dist?.engagements?.[0]?.metricBasis;
+  if (explicitEngBasis === "views" || explicitEngBasis === "impressions" || explicitEngBasis === "mixed") {
+    return explicitEngBasis;
+  }
+
+  // If no distribution placement context is available at all, fallback to content
+  if (!dist) {
+    return content ? getContentMetricBasis(content.contentType) : "impressions";
+  }
+
+  // 2. Distribution Type: Comments in third-party posts/threads are always impression-based
+  const dType = (dist.distributionType || "").toLowerCase().trim();
+  if (dType === "comment") {
+    return "impressions";
+  }
+
+  // 3. Placement Platform & Channel Semantics
+  const pType = (dist.platform?.platformType || "").toLowerCase().trim();
+  const pName = (dist.platform?.name || "").toLowerCase().trim();
+  const pCategory = (dist.platform?.category || "").toLowerCase().trim();
+
+  // A) Video-native placements (where reach = video plays)
+  const isVideoPlacement =
+    pType === "tiktok" ||
+    pType === "shopee_video" ||
+    pType === "youtube" ||
+    pName.includes("tiktok") ||
+    pName.includes("reels") ||
+    pName.includes("shorts") ||
+    pCategory.includes("reels") ||
+    (pName.includes("video") && !pName.includes("grup") && !pName.includes("group"));
+
+  if (isVideoPlacement) {
+    return "views";
+  }
+
+  // B) Placements whose native placement reach is impressions
+  // (Facebook groups/pages, Threads feeds, Telegram/WhatsApp groups/broadcasts, Twitter/X)
+  const isImpressionsPlacement =
+    pType === "facebook" ||
+    pType === "threads" ||
+    pType === "telegram" ||
+    pType === "whatsapp" ||
+    pType === "twitter" ||
+    pType === "x" ||
+    pName.includes("grup") ||
+    pName.includes("group") ||
+    pName.includes("komunitas") ||
+    pName.includes("community") ||
+    pName.includes("forum") ||
+    pName.includes("feed") ||
+    pName.includes("chat") ||
+    pName.includes("channel") ||
+    pName.includes("utas") ||
+    pName.includes("thread") ||
+    pCategory.includes("grup") ||
+    pCategory.includes("group");
+
+  if (isImpressionsPlacement) {
+    return "impressions";
+  }
+
+  // C) Default for general distribution placements (posts into groups/feeds/pages)
+  return "impressions";
+}
+
+/**
+ * Aggregates all distribution placements linked to a specific content item.
+ * Preserves Phase 1 rules:
+ * - Zero double-counting between ContentMetric and DistributionEngagement.
+ * - Single-product commission estimation allowed only when distribution has exactly 1 attributed product.
+ * - Multi-product distributions without actual commission yield UNAVAILABLE.
+ * - Preserves commission provenance: ACTUAL, ESTIMATED, MIXED, PARTIAL, UNAVAILABLE.
+ * - Resolves reach basis and suppresses overall CTR on Mixed Basis.
+ */
+export function aggregateContentDistributionBreakdown(params: {
+  content: RawContentItem;
+  distributions: RawDistributionItem[];
+  allProducts?: RawProduct[];
+}): ContentDistributionSummary {
+  const { content, distributions, allProducts } = params;
+
+  // Filter only distributions linked to this content
+  const linked = distributions.filter((d) => d.contentId === content.id);
+
+  let totalReach = 0;
+  let totalClicks = 0;
+  let totalOrders = 0;
+  let totalCommission: number | null = 0;
+
+  let hasActual = false;
+  let hasEstimated = false;
+  let hasUnavailable = false;
+
+  const basesEncountered = new Set<MetricBasis>();
+
+  const breakdown: ContentDistributionBreakdownItem[] = linked.map((dist) => {
+    const reachBasis = resolveDistributionReachBasis(dist, content);
+    basesEncountered.add(reachBasis);
+
+    const distReach = (dist.engagements || []).reduce(
+      (sum, e) => sum + (Number(e.viewsCount) || 0),
+      0
+    );
+    const distClicks = (dist.engagements || []).reduce(
+      (sum, e) => sum + (Number(e.clicksCount) || 0),
+      0
+    );
+    const distOrders = (dist.engagements || []).reduce(
+      (sum, e) => sum + (Number(e.ordersCount) || 0),
+      0
+    );
+
+    // Commission & provenance for this individual distribution
+    let distCommission: number | null = null;
+    let distProvenance: CommissionProvenance = "UNAVAILABLE";
+
+    let actualSum = 0;
+    let hasActualEngagement = false;
+
+    for (const e of dist.engagements || []) {
+      if (e.actualCommission != null && e.actualCommission !== "") {
+        hasActualEngagement = true;
+        actualSum += Number(e.actualCommission);
+      }
+    }
+
+    if (hasActualEngagement) {
+      distCommission = actualSum;
+      distProvenance = "ACTUAL";
+    } else if (distOrders === 0) {
+      distCommission = 0;
+      distProvenance = "ACTUAL";
+    } else {
+      // distOrders > 0 and no actualCommission
+      const items = dist.items || [];
+      if (items.length === 1) {
+        const itemProd =
+          items[0].product ||
+          allProducts?.find((p) => p.id === items[0].productId);
+        if (itemProd) {
+          distCommission =
+            (distOrders *
+              Number(itemProd.price) *
+              Number(itemProd.commissionRate)) /
+            100;
+          distProvenance = "ESTIMATED";
+        } else {
+          distCommission = null;
+          distProvenance = "UNAVAILABLE";
+        }
+      } else {
+        // Multi-product unallocated or no product attached
+        distCommission = null;
+        distProvenance = "UNAVAILABLE";
+      }
+    }
+
+    // Accumulate summary trackers
+    totalReach += distReach;
+    totalClicks += distClicks;
+    totalOrders += distOrders;
+
+    if (distProvenance === "ACTUAL") {
+      if (distCommission != null && distCommission > 0) {
+        hasActual = true;
+        totalCommission = (totalCommission ?? 0) + distCommission;
+      }
+    } else if (distProvenance === "ESTIMATED") {
+      if (distCommission != null) {
+        hasEstimated = true;
+        totalCommission = (totalCommission ?? 0) + distCommission;
+      }
+    } else if (distProvenance === "UNAVAILABLE" && distOrders > 0) {
+      hasUnavailable = true;
+    }
+
+    const ctr = calculateCTR(distClicks, distReach, reachBasis).ctr;
+    const cvr = calculateConversionRate(distOrders, distClicks);
+    const epc =
+      distCommission != null ? calculateEPC(distCommission, distClicks) : null;
+
+    const productNames = (dist.items || [])
+      .map(
+        (i) =>
+          i.product?.productName ||
+          allProducts?.find((p) => p.id === i.productId)?.productName
+      )
+      .filter((name): name is string => Boolean(name));
+
+    return {
+      distributionId: dist.id,
+      platformId: dist.platformId,
+      platformName: dist.platform?.name || "Unknown Platform",
+      platformType: dist.platform?.platformType || "unknown",
+      distributionType: dist.distributionType || "post",
+      postUrl: dist.postUrl,
+      postedAt: dist.postedAt,
+      status: dist.status,
+      productCount: (dist.items || []).length,
+      productNames,
+      reach: distReach,
+      reachBasis,
+      clicks: distClicks,
+      ctr,
+      orders: distOrders,
+      cvr,
+      commission: distCommission,
+      commissionProvenance: distProvenance,
+      epc,
+    };
+  });
+
+  // Determine summary reach basis
+  let summaryReachBasis: MetricBasis;
+  if (breakdown.length === 0) {
+    summaryReachBasis = getContentMetricBasis(content.contentType);
+  } else if (basesEncountered.size > 1) {
+    summaryReachBasis = "mixed";
+  } else if (basesEncountered.has("impressions")) {
+    summaryReachBasis = "impressions";
+  } else {
+    summaryReachBasis = "views";
+  }
+
+  // Determine summary commission provenance
+  let summaryProvenance: CommissionProvenance = "ACTUAL";
+  if (breakdown.length === 0) {
+    summaryProvenance = "UNAVAILABLE";
+    totalCommission = null;
+  } else if (hasUnavailable) {
+    if (hasActual || hasEstimated) {
+      summaryProvenance = "PARTIAL";
+    } else {
+      summaryProvenance = "UNAVAILABLE";
+      totalCommission = null;
+    }
+  } else if (hasActual && hasEstimated) {
+    summaryProvenance = "MIXED";
+  } else if (hasEstimated) {
+    summaryProvenance = "ESTIMATED";
+  } else if (hasActual) {
+    summaryProvenance = "ACTUAL";
+  } else {
+    // Zero orders / zero commissions
+    summaryProvenance = "ACTUAL";
+    totalCommission = 0;
+  }
+
+  const overallCtr =
+    summaryReachBasis === "mixed"
+      ? null
+      : calculateCTR(totalClicks, totalReach, summaryReachBasis).ctr;
+  const overallCvr = calculateConversionRate(totalOrders, totalClicks);
+  const overallEpc =
+    totalCommission != null ? calculateEPC(totalCommission, totalClicks) : null;
+
+  return {
+    contentId: content.id,
+    contentTitle: content.title,
+    contentType: content.contentType,
+    totalDistributions: breakdown.length,
+    totalReach,
+    reachBasis: summaryReachBasis,
+    totalClicks,
+    overallCtr,
+    totalOrders,
+    overallCvr,
+    totalCommission,
+    commissionProvenance: summaryProvenance,
+    overallEpc,
+    breakdown,
   };
 }

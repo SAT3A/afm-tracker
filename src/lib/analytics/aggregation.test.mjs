@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   aggregateDashboardMetrics,
   normalizePlatformToContentTypes,
+  aggregateContentDistributionBreakdown,
+  getContentMetricBasis,
+  resolveDistributionReachBasis,
 } from "./aggregation.ts";
 
 // Helper dummy product
@@ -622,3 +625,776 @@ test("STABLE CANONICAL SOURCE - Zero distributions shows 0 / N/A with notice", (
   assert.equal(result.contentPerformance[0].orders, 8);
   assert.equal(result.contentPerformance[0].commission, 100000);
 });
+
+// =========================================================================
+// PHASE 2 DETERMINISTIC TEST CASES (CASE 1 - CASE 14)
+// =========================================================================
+
+test("CASE 1 - One Content linked to one Distribution", () => {
+  const content = {
+    id: "content-c1",
+    title: "Review Serum Glowing",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 2000, likesCount: 100, commentsCount: 10, sharesCount: 5, clicksCount: 50, ordersCount: 5, actualCommission: 50000 }],
+  };
+
+  const dist = {
+    id: "dist-c1",
+    contentId: "content-c1",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 1000, likesCount: 50, sharesCount: 10, clicksCount: 60, ordersCount: 6, actualCommission: 60000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [dist],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.contentId, "content-c1");
+  assert.equal(summary.totalDistributions, 1);
+  assert.equal(summary.totalReach, 1000);
+  assert.equal(summary.totalClicks, 60);
+  assert.equal(summary.totalOrders, 6);
+  assert.equal(summary.totalCommission, 60000);
+  assert.equal(summary.commissionProvenance, "ACTUAL");
+  assert.equal(summary.overallCtr, 6.0); // 60/1000 * 100
+  assert.equal(summary.overallCvr, 10.0); // 6/60 * 100
+  assert.equal(summary.overallEpc, 1000); // 60000/60
+  assert.equal(summary.breakdown.length, 1);
+  assert.equal(summary.breakdown[0].distributionId, "dist-c1");
+  assert.equal(summary.breakdown[0].commissionProvenance, "ACTUAL");
+});
+
+test("CASE 2 - One Content linked to multiple Distributions", () => {
+  const content = {
+    id: "content-c2",
+    title: "Tips Skincare Pagi",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 3000, likesCount: 150, commentsCount: 20, sharesCount: 10, clicksCount: 100, ordersCount: 10, actualCommission: 100000 }],
+  };
+
+  const dist1 = {
+    id: "dist-c2-1",
+    contentId: "content-c2",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 1000, likesCount: 40, sharesCount: 5, clicksCount: 50, ordersCount: 5, actualCommission: 50000 }],
+  };
+
+  const platformTele = { id: "plat-tele", name: "Telegram Promo", platformType: "telegram" };
+  const dist2 = {
+    id: "dist-c2-2",
+    contentId: "content-c2",
+    platformId: platformTele.id,
+    platform: platformTele,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 20, sharesCount: 2, clicksCount: 30, ordersCount: 3, actualCommission: 30000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [dist1, dist2],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.totalDistributions, 2);
+  assert.equal(summary.totalReach, 1500);
+  assert.equal(summary.totalClicks, 80);
+  assert.equal(summary.totalOrders, 8);
+  assert.equal(summary.totalCommission, 80000);
+  assert.equal(summary.commissionProvenance, "ACTUAL");
+  assert.equal(summary.overallCvr, 10.0);
+  assert.equal(summary.overallEpc, 1000);
+});
+
+test("CASE 3 - Multiple Contents distributed to the same Channel", () => {
+  const contentA = {
+    id: "content-c3a",
+    title: "Video A",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 500, likesCount: 10, commentsCount: 2, sharesCount: 1 }],
+  };
+
+  const contentB = {
+    id: "content-c3b",
+    title: "Video B",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productB }],
+    metrics: [{ viewsCount: 600, likesCount: 20, commentsCount: 5, sharesCount: 2 }],
+  };
+
+  const distForA = {
+    id: "dist-for-a",
+    contentId: "content-c3a",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "comment",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 200, likesCount: 10, sharesCount: 1, clicksCount: 15, ordersCount: 1, actualCommission: 10000 }],
+  };
+
+  const distForB = {
+    id: "dist-for-b",
+    contentId: "content-c3b",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productB }],
+    engagements: [{ viewsCount: 400, likesCount: 20, sharesCount: 2, clicksCount: 25, ordersCount: 2, actualCommission: 8000 }],
+  };
+
+  const summaryA = aggregateContentDistributionBreakdown({
+    content: contentA,
+    distributions: [distForA, distForB],
+    allProducts: [productA, productB],
+  });
+
+  const summaryB = aggregateContentDistributionBreakdown({
+    content: contentB,
+    distributions: [distForA, distForB],
+    allProducts: [productA, productB],
+  });
+
+  assert.equal(summaryA.totalDistributions, 1);
+  assert.equal(summaryA.breakdown[0].distributionId, "dist-for-a");
+  assert.equal(summaryA.totalClicks, 15);
+
+  assert.equal(summaryB.totalDistributions, 1);
+  assert.equal(summaryB.breakdown[0].distributionId, "dist-for-b");
+  assert.equal(summaryB.totalClicks, 25);
+});
+
+test("CASE 4 - Distribution with contentId = null (unlinked distribution)", () => {
+  const content = {
+    id: "content-c4",
+    title: "Video Content",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 1000, likesCount: 20, commentsCount: 2, sharesCount: 1 }],
+  };
+
+  const unlinkedDist = {
+    id: "dist-unlinked",
+    contentId: null,
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "comment",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 300, likesCount: 5, sharesCount: 0, clicksCount: 12, ordersCount: 1, actualCommission: 10000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [unlinkedDist],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.totalDistributions, 0);
+  assert.equal(summary.totalReach, 0);
+  assert.equal(summary.totalClicks, 0);
+  assert.equal(summary.breakdown.length, 0);
+  assert.equal(summary.commissionProvenance, "UNAVAILABLE");
+});
+
+test("CASE 5 - Deleting or unlinking Content preserves Distribution intact in dashboard aggregation", () => {
+  const unlinkedDist = {
+    id: "dist-c5",
+    contentId: null, // content deleted/unlinked
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 800, likesCount: 30, sharesCount: 4, clicksCount: 40, ordersCount: 4, actualCommission: 40000 }],
+  };
+
+  const result = aggregateDashboardMetrics({
+    contents: [],
+    distributions: [unlinkedDist],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  const bo = result.businessOverview;
+  assert.equal(bo.affiliateClicks, 40, "Commercial clicks intact even without linked content");
+  assert.equal(bo.orders, 4, "Orders intact");
+  assert.equal(bo.commission, 40000, "Commission intact");
+});
+
+test("CASE 6 - Global filters with linked Content", () => {
+  const content = {
+    id: "content-c6",
+    title: "Video Content",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 1000, likesCount: 20, commentsCount: 2, sharesCount: 1 }],
+  };
+
+  const dist = {
+    id: "dist-c6",
+    contentId: "content-c6",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 10, sharesCount: 2, clicksCount: 20, ordersCount: 2, actualCommission: 20000 }],
+  };
+
+  const filteredContents = [content].filter(c => c.persona.id === personaAI.id);
+  const filteredDistributions = [dist].filter(d => d.persona.id === personaAI.id);
+
+  const result = aggregateDashboardMetrics({
+    contents: filteredContents,
+    distributions: filteredDistributions,
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  assert.equal(result.businessOverview.affiliateClicks, 20);
+  assert.equal(result.businessOverview.orders, 2);
+});
+
+test("CASE 7 - Content Detail shows only its linked Distributions", () => {
+  const contentTarget = {
+    id: "c7-target",
+    title: "Target Video",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [],
+  };
+
+  const contentOther = {
+    id: "c7-other",
+    title: "Other Video",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productB }],
+    metrics: [],
+  };
+
+  const distTarget = {
+    id: "dist-target",
+    contentId: "c7-target",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 100, likesCount: 5, sharesCount: 1, clicksCount: 10, ordersCount: 1, actualCommission: 10000 }],
+  };
+
+  const distOther = {
+    id: "dist-other",
+    contentId: "c7-other",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productB }],
+    engagements: [{ viewsCount: 200, likesCount: 10, sharesCount: 2, clicksCount: 20, ordersCount: 2, actualCommission: 20000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content: contentTarget,
+    distributions: [distTarget, distOther],
+    allProducts: [productA, productB],
+  });
+
+  assert.equal(summary.totalDistributions, 1);
+  assert.equal(summary.breakdown[0].distributionId, "dist-target");
+  assert.equal(summary.totalClicks, 10);
+
+  const summaryOther = aggregateContentDistributionBreakdown({
+    content: contentOther,
+    distributions: [distTarget, distOther],
+    allProducts: [productA, productB],
+  });
+  assert.equal(summaryOther.totalDistributions, 1);
+  assert.equal(summaryOther.breakdown[0].distributionId, "dist-other");
+  assert.equal(summaryOther.totalClicks, 20);
+});
+
+test("CASE 8 - Same Content across multiple Channels with different metrics", () => {
+  const content = {
+    id: "c8-content",
+    title: "Multi-channel Content",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [],
+  };
+
+  const distFB = {
+    id: "c8-dist-fb",
+    contentId: "c8-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 1000, likesCount: 50, sharesCount: 10, clicksCount: 40, ordersCount: 2, actualCommission: 20000 }],
+  };
+
+  const platformWA = { id: "plat-wa", name: "WhatsApp Group", platformType: "whatsapp" };
+  const distWA = {
+    id: "c8-dist-wa",
+    contentId: "c8-content",
+    platformId: platformWA.id,
+    platform: platformWA,
+    persona: personaAI,
+    distributionType: "comment",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 200, likesCount: 10, sharesCount: 0, clicksCount: 20, ordersCount: 3, actualCommission: 30000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [distFB, distWA],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.totalDistributions, 2);
+  assert.equal(summary.totalClicks, 60);
+  assert.equal(summary.totalOrders, 5);
+  assert.equal(summary.totalCommission, 50000);
+
+  // Dist FB has 40 clicks / 1000 reach = 4% CTR, 2/40 = 5% CVR
+  const rowFB = summary.breakdown.find(b => b.distributionId === "c8-dist-fb");
+  assert.equal(rowFB.ctr, 4.0);
+  assert.equal(rowFB.cvr, 5.0);
+
+  // Dist WA has 20 clicks / 200 reach = 10% CTR, 3/20 = 15% CVR
+  const rowWA = summary.breakdown.find(b => b.distributionId === "c8-dist-wa");
+  assert.equal(rowWA.ctr, 10.0);
+  assert.equal(rowWA.cvr, 15.0);
+});
+
+test("CASE 9 - Multi-product Distribution without actual commission yields UNAVAILABLE provenance", () => {
+  const content = {
+    id: "c9-content",
+    title: "Multi-product Video",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }, { product: productB }],
+    metrics: [],
+  };
+
+  const distMulti = {
+    id: "c9-dist-multi",
+    contentId: "c9-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }, { product: productB }],
+    engagements: [{ viewsCount: 1000, likesCount: 10, sharesCount: 1, clicksCount: 50, ordersCount: 5, actualCommission: null }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [distMulti],
+    allProducts: [productA, productB],
+  });
+
+  assert.equal(summary.breakdown[0].commission, null);
+  assert.equal(summary.breakdown[0].commissionProvenance, "UNAVAILABLE");
+  assert.equal(summary.totalCommission, null);
+  assert.equal(summary.commissionProvenance, "UNAVAILABLE");
+});
+
+test("CASE 10 - No regression in Phase 1 canonical commercial aggregation", () => {
+  const content = {
+    id: "c10-content",
+    title: "Shopee Video Top",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 5000, likesCount: 200, commentsCount: 50, sharesCount: 20, clicksCount: 100, ordersCount: 10, actualCommission: 100000 }],
+  };
+
+  const dist = {
+    id: "c10-dist",
+    contentId: "c10-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 2000, likesCount: 80, sharesCount: 15, clicksCount: 120, ordersCount: 12, actualCommission: 120000 }],
+  };
+
+  const result = aggregateDashboardMetrics({
+    contents: [content],
+    distributions: [dist],
+    allProducts: [productA],
+    allPlatforms: [platformFB],
+  });
+
+  const bo = result.businessOverview;
+  assert.equal(bo.canonicalCommercialSource, "DistributionEngagement");
+  assert.equal(bo.affiliateClicks, 120, "Distribution clicks is canonical");
+  assert.equal(bo.orders, 12, "Distribution orders is canonical");
+  assert.equal(bo.commission, 120000, "Distribution commission is canonical");
+  assert.notEqual(bo.affiliateClicks, 220, "Must not sum content + distribution clicks");
+});
+
+test("CASE 11 - Content with impressions basis preserves impressions reachBasis (does NOT assume video views)", () => {
+  const contentThreads = {
+    id: "c11-threads",
+    title: "Utas Skincare Viral",
+    contentType: "threads",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 1500, likesCount: 60, commentsCount: 15, sharesCount: 5 }],
+  };
+
+  assert.equal(getContentMetricBasis(contentThreads.contentType), "impressions");
+
+  const distThreads = {
+    id: "c11-dist",
+    contentId: "c11-threads",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 800, likesCount: 30, sharesCount: 3, clicksCount: 40, ordersCount: 4, actualCommission: 40000 }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content: contentThreads,
+    distributions: [distThreads],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.reachBasis, "impressions", "Must preserve impressions basis");
+  assert.equal(summary.breakdown[0].reachBasis, "impressions");
+  assert.equal(resolveDistributionReachBasis(distThreads, contentThreads), "impressions");
+  assert.equal(summary.overallCtr, 5.0); // 40/800 * 100
+});
+
+test("CASE 12 - Commission aggregation with actual + estimated yields MIXED provenance", () => {
+  const content = {
+    id: "c12-content",
+    title: "Creative Skincare",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [],
+  };
+
+  // Dist 1: Actual commission
+  const dist1 = {
+    id: "c12-dist-1",
+    contentId: "c12-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 20, sharesCount: 2, clicksCount: 25, ordersCount: 2, actualCommission: 50000 }],
+  };
+
+  // Dist 2: Single-product estimated commission (3 orders * Rp100,000 * 10% = Rp30,000)
+  const dist2 = {
+    id: "c12-dist-2",
+    contentId: "c12-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 15, sharesCount: 1, clicksCount: 30, ordersCount: 3, actualCommission: null }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [dist1, dist2],
+    allProducts: [productA],
+  });
+
+  assert.equal(summary.breakdown[0].commissionProvenance, "ACTUAL");
+  assert.equal(summary.breakdown[1].commissionProvenance, "ESTIMATED");
+  assert.equal(summary.breakdown[1].commission, 30000);
+  assert.equal(summary.totalCommission, 80000); // 50,000 + 30,000
+  assert.equal(summary.commissionProvenance, "MIXED", "Summary of actual + estimated must be MIXED");
+});
+
+test("CASE 13 - Commission aggregation containing unavailable multi-product yields PARTIAL provenance", () => {
+  const content = {
+    id: "c13-content",
+    title: "Creative Skincare Bundle",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }, { product: productB }],
+    metrics: [],
+  };
+
+  // Dist 1: Actual commission
+  const dist1 = {
+    id: "c13-dist-1",
+    contentId: "c13-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [{ viewsCount: 500, likesCount: 20, sharesCount: 2, clicksCount: 25, ordersCount: 2, actualCommission: 50000 }],
+  };
+
+  // Dist 2: Multi-product with 2 orders, no actual commission -> UNAVAILABLE
+  const dist2 = {
+    id: "c13-dist-2",
+    contentId: "c13-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }, { product: productB }],
+    engagements: [{ viewsCount: 500, likesCount: 15, sharesCount: 1, clicksCount: 30, ordersCount: 2, actualCommission: null }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [dist1, dist2],
+    allProducts: [productA, productB],
+  });
+
+  assert.equal(summary.breakdown[0].commissionProvenance, "ACTUAL");
+  assert.equal(summary.breakdown[1].commissionProvenance, "UNAVAILABLE");
+  assert.equal(summary.totalCommission, 50000);
+  assert.equal(summary.commissionProvenance, "PARTIAL", "Known commission with unallocated orders must be PARTIAL");
+});
+
+test("CASE 14 - Content with multiple ContentProducts must not force multi-product distribution without explicit selection", () => {
+  // Content has multiple products (Product A and Product B)
+  const content = {
+    id: "c14-content",
+    title: "Skincare Duo Comparison",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }, { product: productB }],
+    metrics: [],
+  };
+
+  // User explicitly distributed only Product A
+  const distSingleProd = {
+    id: "c14-dist",
+    contentId: "c14-content",
+    platformId: platformFB.id,
+    platform: platformFB,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }], // Exactly 1 product selected
+    engagements: [{ viewsCount: 1000, likesCount: 30, sharesCount: 5, clicksCount: 50, ordersCount: 4, actualCommission: null }],
+  };
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [distSingleProd],
+    allProducts: [productA, productB],
+  });
+
+  // Estimated commission is preserved for single product: 4 * 100,000 * 10% = 40,000
+  assert.equal(summary.breakdown[0].commissionProvenance, "ESTIMATED");
+  assert.equal(summary.breakdown[0].commission, 40000);
+  assert.equal(summary.totalCommission, 40000);
+  assert.equal(summary.commissionProvenance, "ESTIMATED");
+});
+
+test("CASE 15 — Same Content linked to distributions with mixed reach bases", () => {
+  // Content is a Shopee Video creative
+  const content = {
+    id: "c15-content",
+    title: "Viral Skincare Video",
+    contentType: "shopee_video",
+    publishedAt: new Date(),
+    persona: personaAI,
+    products: [{ product: productA }],
+    metrics: [{ viewsCount: 20000, likesCount: 800, commentsCount: 50, sharesCount: 30 }],
+  };
+
+  // Distribution A: Facebook Group post (impressions placement)
+  // 10,000 impressions, 400 clicks, 20 orders, Rp200,000 commission
+  const distA = {
+    id: "dist-c15-a",
+    contentId: "c15-content",
+    platformId: platformFB.id,
+    platform: platformFB, // "Grup Racun Shopee 1.2M", platformType: "facebook"
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [
+      {
+        viewsCount: 10000,
+        likesCount: 120,
+        sharesCount: 15,
+        clicksCount: 400,
+        ordersCount: 20,
+        actualCommission: 200000,
+      },
+    ],
+  };
+
+  // Distribution B: TikTok video placement (views/plays placement)
+  // 5,000 plays, 300 clicks, 15 orders, Rp150,000 commission
+  const platformTikTok = {
+    id: "plat-tt",
+    name: "Akun TikTok Official",
+    platformType: "tiktok",
+  };
+
+  const distB = {
+    id: "dist-c15-b",
+    contentId: "c15-content",
+    platformId: platformTikTok.id,
+    platform: platformTikTok,
+    persona: personaAI,
+    distributionType: "post",
+    postedAt: new Date(),
+    status: "posted",
+    items: [{ product: productA }],
+    engagements: [
+      {
+        viewsCount: 5000,
+        likesCount: 300,
+        sharesCount: 50,
+        clicksCount: 300,
+        ordersCount: 15,
+        actualCommission: 150000,
+      },
+    ],
+  };
+
+  // Verify independent placement reach basis resolution
+  assert.equal(getContentMetricBasis(content.contentType), "views", "Content creative is video");
+  assert.equal(resolveDistributionReachBasis(distA, content), "impressions", "FB Group placement is impressions");
+  assert.equal(resolveDistributionReachBasis(distB, content), "views", "TikTok placement is views");
+
+  const summary = aggregateContentDistributionBreakdown({
+    content,
+    distributions: [distA, distB],
+    allProducts: [productA],
+  });
+
+  // Verify individual breakdown items preserve local placement basis and local CTR
+  assert.equal(summary.breakdown.length, 2);
+  assert.equal(summary.breakdown[0].distributionId, "dist-c15-a");
+  assert.equal(summary.breakdown[0].reachBasis, "impressions");
+  assert.equal(summary.breakdown[0].reach, 10000);
+  assert.equal(summary.breakdown[0].clicks, 400);
+  assert.equal(summary.breakdown[0].ctr, 4.0, "Distribution A CTR must be 400/10000 = 4.0%");
+
+  assert.equal(summary.breakdown[1].distributionId, "dist-c15-b");
+  assert.equal(summary.breakdown[1].reachBasis, "views");
+  assert.equal(summary.breakdown[1].reach, 5000);
+  assert.equal(summary.breakdown[1].clicks, 300);
+  assert.equal(summary.breakdown[1].ctr, 6.0, "Distribution B CTR must be 300/5000 = 6.0%");
+
+  // Verify aggregate properties
+  // Total Clicks: 700 (400 + 300)
+  assert.equal(summary.totalClicks, 700, "Clicks must be additive");
+  // Total Orders: 35 (20 + 15)
+  assert.equal(summary.totalOrders, 35, "Orders must be additive");
+  // Total Commission: 350,000 (200,000 + 150,000)
+  assert.equal(summary.totalCommission, 350000, "Commission must be additive");
+  assert.equal(summary.commissionProvenance, "ACTUAL");
+
+  // Informational total reach
+  assert.equal(summary.totalReach, 15000);
+
+  // Mixed basis safeguard:
+  assert.equal(summary.reachBasis, "mixed", "Mixed reach bases must result in mixed reachBasis");
+  assert.equal(
+    summary.overallCtr,
+    null,
+    "Aggregate CTR must be null (N/A) on Mixed Basis to prevent invalid 700/15000 ratio"
+  );
+
+  // Conversion rate and EPC remain valid
+  assert.equal(summary.overallCvr, 5.0, "Overall CVR is 35/700 * 100 = 5.0%");
+  assert.equal(summary.overallEpc, 500, "Overall EPC is 350000/700 = 500");
+});
+
+

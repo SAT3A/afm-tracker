@@ -31,6 +31,7 @@ import {
   Search,
   Check,
   AlertTriangle,
+  Video,
 } from "lucide-react";
 import { DistributionItemData } from "./distribution-table";
 
@@ -56,6 +57,17 @@ export interface SimplePersonaOption {
   avatarUrl: string | null;
 }
 
+export interface SimpleContentOption {
+  id: string;
+  title: string;
+  contentType: string;
+  personaId?: string;
+  personaName?: string;
+  publishedAt?: Date | string;
+  productIds?: string[];
+  productNames?: string[];
+}
+
 interface DistributionFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,6 +75,7 @@ interface DistributionFormModalProps {
   products: SimpleProductOption[];
   platforms: SimplePlatformOption[];
   personas: SimplePersonaOption[];
+  contents?: SimpleContentOption[];
   campaignOptions?: string[];
   onSuccess?: () => void;
 }
@@ -74,6 +87,7 @@ export function DistributionFormModal({
   products,
   platforms,
   personas,
+  contents = [],
   campaignOptions = [],
   onSuccess,
 }: DistributionFormModalProps) {
@@ -87,6 +101,9 @@ export function DistributionFormModal({
   // Common Form States
   const [personaId, setPersonaId] = useState(
     distributionToEdit?.persona.id || personas[0]?.id || ""
+  );
+  const [contentId, setContentId] = useState<string>(
+    distributionToEdit?.contentId || ""
   );
   const [distributionType, setDistributionType] = useState<"post" | "comment">(
     (distributionToEdit?.distributionType as "post" | "comment") || "comment"
@@ -161,6 +178,7 @@ export function DistributionFormModal({
   useEffect(() => {
     if (open) {
       setPersonaId(distributionToEdit?.persona.id || personas[0]?.id || "");
+      setContentId(distributionToEdit?.contentId || "");
       setDistributionType(
         (distributionToEdit?.distributionType as "post" | "comment") || "comment"
       );
@@ -217,6 +235,8 @@ export function DistributionFormModal({
       p.category.toLowerCase().includes(platformSearch.toLowerCase())
   );
 
+  const selectedContent = contents.find((c) => c.id === contentId);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -239,6 +259,7 @@ export function DistributionFormModal({
       const formData = new FormData();
       formData.append("platformId", platformId);
       formData.append("personaId", personaId);
+      formData.append("contentId", contentId);
       formData.append("distributionType", distributionType);
       formData.append("postUrl", postUrl);
       formData.append("status", status);
@@ -281,6 +302,7 @@ export function DistributionFormModal({
       formData.append("platformIds", batchPlatformIds.join(","));
       formData.append("productIds", selectedProductIds.join(","));
       formData.append("personaId", personaId);
+      formData.append("contentId", contentId);
       formData.append("distributionType", distributionType);
       formData.append("campaign", campaign);
       formData.append("notes", notes);
@@ -507,6 +529,72 @@ export function DistributionFormModal({
               </div>
             </div>
           )}
+
+          {/* 2b. Hubungkan Materi Konten Kreatif (Opsional) */}
+          <div className="space-y-2 p-3 rounded-xl border border-border bg-card/60">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-primary" />
+                Materi Konten Kreatif (Opsional)
+              </Label>
+              <span className="text-[11px] text-muted-foreground">
+                Kaitkan materi video / post ke sebaran ini
+              </span>
+            </div>
+
+            <select
+              value={contentId}
+              onChange={(e) => setContentId(e.target.value)}
+              className="w-full h-9 px-3 text-xs rounded-md border border-border bg-background outline-none focus:border-primary font-medium"
+            >
+              <option value="">-- Tanpa Konten Kreatif (Sebar Link Langsung) --</option>
+              {contents.map((c) => (
+                <option key={c.id} value={c.id}>
+                  [{c.contentType.toUpperCase()}] {c.title}
+                </option>
+              ))}
+            </select>
+
+            {/* Non-intrusive Product Pre-selection Helper (Guardrail 4) */}
+            {selectedContent &&
+              selectedContent.productNames &&
+              selectedContent.productNames.length > 0 && (
+                <div className="mt-2 p-2.5 rounded-lg border border-primary/20 bg-primary/5 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground font-medium flex items-center gap-1.5 truncate">
+                      <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                      Produk terkait konten ini ({selectedContent.productNames.length}):
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          selectedContent.productIds &&
+                          selectedContent.productIds.length > 0
+                        ) {
+                          setSelectedProductIds((prev) =>
+                            Array.from(
+                              new Set([
+                                ...prev,
+                                ...(selectedContent.productIds || []),
+                              ])
+                            )
+                          );
+                        }
+                      }}
+                      className="h-6 text-[11px] px-2 py-0 border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                    >
+                      Gunakan produk dari konten
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-foreground font-medium truncate">
+                    {selectedContent.productNames.join(", ")}
+                  </p>
+                </div>
+              )}
+          </div>
 
           {/* 3. Multi-Select Produk yang Disebar */}
           <div className="space-y-2">
